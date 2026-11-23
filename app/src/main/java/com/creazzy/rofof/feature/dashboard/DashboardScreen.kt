@@ -69,9 +69,10 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     var showAdd by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<LedgerTransaction?>(null) }
 
-    val income = transactions.asSequence().filter { it.transactionType == "INCOME" }
+    val egpTransactions = transactions.filter { it.currencyCode == "EGP" && it.currencyExponent == 2 }
+    val income = egpTransactions.asSequence().filter { it.transactionType == "INCOME" }
         .fold(0L) { total, item -> Math.addExact(total, item.amountMinor) }
-    val expenses = transactions.asSequence().filter { it.transactionType == "EXPENSE" }
+    val expenses = egpTransactions.asSequence().filter { it.transactionType == "EXPENSE" }
         .fold(0L) { total, item -> Math.addExact(total, item.amountMinor) }
     val net = Math.subtractExact(income, expenses)
     val categoryNames = categories.associate { it.id to it.name }
@@ -246,7 +247,9 @@ private fun TransactionRow(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    (if (isIncome) "+" else "−") + formatEgp(transaction.amountMinor, language),
+                    (if (isIncome) "+" else "−") + formatMoney(
+                        transaction.amountMinor, transaction.currencyCode, transaction.currencyExponent, language
+                    ),
                     color = if (isIncome) Green else Red,
                     fontWeight = FontWeight.Bold
                 )
@@ -308,13 +311,16 @@ private fun AddTransactionDialog(
     )
 }
 
-private fun formatEgp(minor: Long, language: String): String {
+private fun formatEgp(minor: Long, language: String): String =
+    formatMoney(minor, "EGP", 2, language)
+
+private fun formatMoney(minor: Long, currencyCode: String, exponent: Int, language: String): String {
     val locale = if (language == "ar") Locale("ar", "EG") else Locale.US
     return NumberFormat.getCurrencyInstance(locale).apply {
-        currency = Currency.getInstance("EGP")
-        minimumFractionDigits = 2
-        maximumFractionDigits = 2
-    }.format(BigDecimal.valueOf(minor, 2))
+        currency = Currency.getInstance(currencyCode)
+        minimumFractionDigits = exponent
+        maximumFractionDigits = exponent
+    }.format(BigDecimal.valueOf(minor, exponent))
 }
 
 private fun dateLabel(epoch: Long, language: String): String =
@@ -344,7 +350,7 @@ private data class Words(
 )
 
 private val Arabic = Words(
-    "مساء الخير", "صافي الرصيد", "الدخل", "المصروفات", "أحدث العمليات",
+    "مساء الخير", "صافي الرصيد (EGP)", "الدخل (EGP)", "المصروفات (EGP)", "أحدث العمليات",
     { "عدد العمليات: $it" }, "＋ إضافة عملية", "لا توجد عمليات بعد",
     "أضف أول دخل أو مصروف ليظهر هنا", "عملية مالية جديدة", "اسم العملية",
     "المبلغ بالجنيه", "مثال: 125.50", "التصنيف", "عام", "حفظ العملية",
@@ -352,7 +358,7 @@ private val Arabic = Words(
     "سيتم حذف هذه العملية نهائيًا من سجل الجهاز."
 )
 private val English = Words(
-    "Good evening", "Net balance", "Income", "Expenses", "Recent transactions",
+    "Good evening", "Net balance (EGP)", "Income (EGP)", "Expenses (EGP)", "Recent transactions",
     { "\$it saved transactions" }, "＋ Add transaction", "No transactions yet",
     "Add your first income or expense", "New transaction", "Transaction name",
     "Amount in EGP", "Example: 125.50", "Category", "General", "Save transaction",
