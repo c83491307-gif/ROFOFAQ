@@ -54,6 +54,19 @@ interface PurchaseDao {
     suspend fun allocationsForItem(itemId: String): List<PurchaseAllocationEntity>
 
     @Query("""
+        SELECT a.id AS allocationId, i.title AS itemTitle, p.id AS participantId,
+          p.displayName AS participantName, a.amountMinor AS amountMinor,
+          l.transactionId AS personalTransactionId
+        FROM purchase_allocations a
+        INNER JOIN purchase_items i ON i.id = a.itemId
+        INNER JOIN purchase_participants p ON p.id = a.participantId
+        LEFT JOIN allocation_personal_expense_links l ON l.allocationId = a.id
+        WHERE i.sessionId = :sessionId
+        ORDER BY i.createdAtEpochMillis, p.createdAtEpochMillis
+    """)
+    fun observeAllocationViews(sessionId: String): Flow<List<PurchaseAllocationView>>
+
+    @Query("""
         SELECT p.id AS participantId, p.displayName AS displayName,
           COALESCE((SELECT SUM(a.amountMinor) FROM purchase_allocations a
             INNER JOIN purchase_items i ON i.id = a.itemId
