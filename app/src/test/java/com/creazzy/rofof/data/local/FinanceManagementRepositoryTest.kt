@@ -59,6 +59,15 @@ class FinanceManagementRepositoryTest {
         assertFalse(database.accountDao().findById(accountId)!!.isArchived)
     }
 
+
+    @Test fun accountWithTransferActivityCannotBeArchived() = runBlocking {
+        val source = finance.createAccount("Transfer source", "EGP", 2, 5000L)
+        val destination = finance.createAccount("Transfer destination", "EGP", 2, 0L)
+        finance.transfer(source, destination, 1000L)
+        assertTrue(runCatching { finance.archiveAccount(source) }.isFailure)
+        assertFalse(database.accountDao().findById(source)!!.isArchived)
+    }
+
     @Test fun categoryRenameAndArchivePreserveArchivedRecordForManagement() = runBlocking {
         val id = finance.createCategory("Dining", "EXPENSE")
         finance.renameCategory(id, "Restaurants")

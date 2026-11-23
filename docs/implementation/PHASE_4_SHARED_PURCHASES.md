@@ -40,3 +40,12 @@ The branch CI must pass on its exact latest commit:
 4. Emulator-backed Room tests for participant balances, exact allocation, payment idempotency, settlement gating and explicit personal-expense linking.
 
 The v4 → v5 migration also requires an upgrade-path test against a real v4 database before this phase can be considered complete. No merge, release APK or deployment is claimed until verification evidence is available.
+
+
+## Account and category management
+
+- Account management now supports renaming and confirmed archival. The default cash account is not offered for archival.
+- Category management now supports renaming and confirmed archival, retaining the archived entries in the management list while excluding them from active pickers.
+- Archived accounts and categories remain persisted and discoverable through dedicated management flows; no financial rows are deleted by archival.
+- Repository guards prevent archiving accounts with ledger or transfer activity, and categories with transactions or active children. Failures and successful changes are surfaced to the user in Arabic or English.
+- Robolectric Compose UI tests cover account/category rename, archive confirmation, default-account protection, and archived-entry visibility. Repository tests cover persistence, activity guards, parent-child ordering, and active-vs-management queries.
