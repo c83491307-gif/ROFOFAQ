@@ -20,9 +20,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PurchaseItemEntity::class,
         PurchaseAllocationEntity::class,
         PurchasePaymentEntity::class,
-        AllocationPersonalExpenseLinkEntity::class
+        AllocationPersonalExpenseLinkEntity::class,
+        BudgetEntity::class,
+        FinancialGoalEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class RofofDatabase : RoomDatabase() {
@@ -33,6 +35,7 @@ abstract class RofofDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun transferDao(): TransferDao
     abstract fun purchaseDao(): PurchaseDao
+    abstract fun budgetGoalDao(): BudgetGoalDao
 
     companion object {
         @Volatile
@@ -260,6 +263,36 @@ abstract class RofofDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""CREATE TABLE IF NOT EXISTS budgets (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    categoryId TEXT NOT NULL,
+                    amountMinor INTEGER NOT NULL,
+                    currencyCode TEXT NOT NULL,
+                    currencyExponent INTEGER NOT NULL,
+                    periodStartEpochMillis INTEGER NOT NULL,
+                    periodEndEpochMillis INTEGER NOT NULL,
+                    createdAtEpochMillis INTEGER NOT NULL
+                )""")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_budgets_categoryId_currencyCode_periodStartEpochMillis ON budgets (categoryId, currencyCode, periodStartEpochMillis)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_budgets_periodStartEpochMillis ON budgets (periodStartEpochMillis)")
+                database.execSQL("""CREATE TABLE IF NOT EXISTS financial_goals (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    targetAmountMinor INTEGER NOT NULL,
+                    currentAmountMinor INTEGER NOT NULL,
+                    currencyCode TEXT NOT NULL,
+                    currencyExponent INTEGER NOT NULL,
+                    deadlineEpochMillis INTEGER,
+                    isArchived INTEGER NOT NULL,
+                    createdAtEpochMillis INTEGER NOT NULL,
+                    updatedAtEpochMillis INTEGER NOT NULL
+                )""")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_financial_goals_isArchived_createdAtEpochMillis ON financial_goals (isArchived, createdAtEpochMillis)")
+            }
+        }
+
         fun getInstance(context: Context): RofofDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -267,7 +300,7 @@ abstract class RofofDatabase : RoomDatabase() {
                     RofofDatabase::class.java,
                     "rofof-local.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build()
                     .also { instance = it }
             }
