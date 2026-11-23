@@ -80,7 +80,7 @@ fun AccountManagerDialog(
 fun TransferDialog(
     accounts: List<AccountBalance>,
     language: String,
-    onTransfer: (String, String, String) -> Unit,
+    onTransfer: (String, String, String, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     val ar = language == "ar"
@@ -138,7 +138,7 @@ fun TransferDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onTransfer(sourceId, destinationId, amount) },
+                onClick = { onTransfer(sourceId, destinationId, amount, note) },
                 enabled = sourceId.isNotBlank() && destinationId.isNotBlank() && amount.isNotBlank() && compatible.any { it.id == destinationId }
             ) { Text(if (ar) "تأكيد التحويل" else "Confirm transfer") }
         },
