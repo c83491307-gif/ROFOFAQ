@@ -16,7 +16,10 @@ object PurchaseMath {
             .multiply(BigInteger.valueOf(unitPriceMinor))
         val rounded = numerator.add(BigInteger.valueOf(QUANTITY_SCALE / 2))
             .divide(BigInteger.valueOf(QUANTITY_SCALE))
-        return rounded.longValueExact()
+        require(rounded <= LONG_MAX && rounded >= LONG_MIN) {
+            "Line total exceeds the supported monetary range"
+        }
+        return rounded.toLong()
     }
 
     fun requireExactAllocation(totalMinor: Long, shares: Map<String, Long>) {
@@ -31,4 +34,7 @@ object PurchaseMath {
             "Allocations must add up exactly to the item total"
         }
     }
+
+    private val LONG_MAX: BigInteger = BigInteger.valueOf(Long.MAX_VALUE)
+    private val LONG_MIN: BigInteger = BigInteger.valueOf(Long.MIN_VALUE)
 }
