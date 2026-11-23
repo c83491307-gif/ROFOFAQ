@@ -130,11 +130,26 @@ abstract class RofofDatabase : RoomDatabase() {
                 )
                 database.execSQL(
                     """
+                    INSERT OR IGNORE INTO categories
+                    (id, name, transactionType, parentId, isArchived, createdAtEpochMillis)
+                    SELECT 'legacy-expense-' || lower(trim(category)), trim(category),
+                           'EXPENSE', NULL, 0, 0
+                    FROM expenses
+                    WHERE trim(category) <> ''
+                    GROUP BY lower(trim(category))
+                    """.trimIndent()
+                )
+                database.execSQL(
+                    """
                     INSERT OR IGNORE INTO transactions
                     (id, title, transactionType, amountMinor, currencyCode, currencyExponent,
                      accountId, categoryId, occurredAtEpochMillis, createdAtEpochMillis, notes)
                     SELECT id, title, 'EXPENSE', amountMinor, currencyCode, currencyExponent,
-                           'default-cash', 'default-expense-general',
+                           'default-cash',
+                           CASE
+                               WHEN trim(category) = '' THEN 'default-expense-general'
+                               ELSE 'legacy-expense-' || lower(trim(category))
+                           END,
                            occurredAtEpochMillis, createdAtEpochMillis, NULL
                     FROM expenses
                     """.trimIndent()
