@@ -60,6 +60,19 @@ interface PurchaseDao {
     """)
     fun observeSettlements(sessionId: String): Flow<List<ParticipantSettlementRow>>
 
+    @Query("""
+        SELECT p.id AS participantId, p.displayName AS displayName,
+          COALESCE((SELECT SUM(a.amountMinor) FROM purchase_allocations a
+            INNER JOIN purchase_items i ON i.id = a.itemId
+            WHERE i.sessionId = :sessionId AND a.participantId = p.id), 0) AS allocatedMinor,
+          COALESCE((SELECT SUM(pay.amountMinor) FROM purchase_payments pay
+            WHERE pay.sessionId = :sessionId AND pay.participantId = p.id), 0) AS paidMinor
+        FROM purchase_participants p
+        WHERE p.sessionId = :sessionId AND p.isArchived = 0
+        ORDER BY p.createdAtEpochMillis
+    """)
+    suspend fun settlementSnapshot(sessionId: String): List<ParticipantSettlementRow>
+
     @Query("SELECT * FROM purchase_payments WHERE idempotencyKey = :key LIMIT 1")
     suspend fun findPaymentByIdempotencyKey(key: String): PurchasePaymentEntity?
 
