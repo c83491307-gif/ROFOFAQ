@@ -28,4 +28,7 @@ interface CategoryDao {
 
     @Query("UPDATE categories SET isArchived = 1 WHERE id = :id")
     suspend fun archive(id: String)
+
+    @Query("SELECT COUNT(*) FROM categories WHERE parentId = :parentId AND isArchived = 0")
+    suspend fun countChildren(parentId: String): Int
 }
