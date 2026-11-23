@@ -49,3 +49,13 @@ The v4 → v5 migration also requires an upgrade-path test against a real v4 dat
 - Archived accounts and categories remain persisted and discoverable through dedicated management flows; no financial rows are deleted by archival.
 - Repository guards prevent archiving accounts with ledger or transfer activity, and categories with transactions or active children. Failures and successful changes are surfaced to the user in Arabic or English.
 - Robolectric Compose UI tests cover account/category rename, archive confirmation, default-account protection, and archived-entry visibility. Repository tests cover persistence, activity guards, parent-child ordering, and active-vs-management queries.
+
+
+## Purchase maintenance — next incremental slice
+
+- Participants can be renamed while the purchase is open.
+- Archiving a participant is allowed only before any allocations or payments exist; participants with financial history remain active/visible so settlement totals cannot disappear.
+- Unallocated items can be edited with line totals recalculated by the fixed-point purchase math.
+- Items can be deleted only before allocation; allocated item history is immutable.
+- Robolectric repository tests cover participant rename/archive guards and item update/delete guards.
+- UI controls for these operations are tracked as the next UI integration step; this repository slice does not claim the full interaction is complete.

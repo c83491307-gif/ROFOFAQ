@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -22,6 +23,27 @@ interface PurchaseDao {
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertPayment(value: PurchasePaymentEntity)
+
+    @Update
+    suspend fun updateItem(value: PurchaseItemEntity): Int
+
+    @Query("UPDATE purchase_participants SET displayName = :displayName WHERE id = :participantId AND sessionId = :sessionId AND isArchived = 0")
+    suspend fun renameParticipant(sessionId: String, participantId: String, displayName: String): Int
+
+    @Query("UPDATE purchase_participants SET isArchived = 1 WHERE id = :participantId AND sessionId = :sessionId AND isArchived = 0")
+    suspend fun archiveParticipant(sessionId: String, participantId: String): Int
+
+    @Query("SELECT COUNT(*) FROM purchase_allocations WHERE participantId = :participantId")
+    suspend fun allocationCount(participantId: String): Int
+
+    @Query("SELECT COUNT(*) FROM purchase_payments WHERE participantId = :participantId")
+    suspend fun paymentCount(participantId: String): Int
+
+    @Query("SELECT COUNT(*) FROM purchase_allocations WHERE itemId = :itemId")
+    suspend fun allocationCountForItem(itemId: String): Int
+
+    @Query("DELETE FROM purchase_items WHERE id = :itemId")
+    suspend fun deleteItem(itemId: String): Int
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertExpenseLink(value: AllocationPersonalExpenseLinkEntity)

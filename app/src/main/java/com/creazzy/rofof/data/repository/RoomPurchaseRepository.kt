@@ -41,6 +41,58 @@ class RoomPurchaseRepository(private val database: RofofDatabase) {
             id
         }
 
+    suspend fun renameParticipant(sessionId: String, participantId: String, displayName: String) = database.withTransaction {
+        val session = dao.findSession(sessionId) ?: error("Purchase session not found")
+        require(session.status == OPEN) { "Closed purchase sessions cannot be changed" }
+        val participant = dao.findParticipant(participantId) ?: error("Participant not found")
+        require(participant.sessionId == sessionId && !participant.isArchived) { "Participant does not belong to this active purchase" }
+        val cleanName = displayName.trim()
+        require(cleanName.isNotEmpty()) { "Participant name is required" }
+        require(dao.renameParticipant(sessionId, participantId, cleanName) == 1) { "Participant could not be renamed" }
+    }
+
+    suspend fun archiveParticipant(sessionId: String, participantId: String) = database.withTransaction {
+        val session = dao.findSession(sessionId) ?: error("Purchase session not found")
+        require(session.status == OPEN) { "Closed purchase sessions cannot be changed" }
+        val participant = dao.findParticipant(participantId) ?: error("Participant not found")
+        require(participant.sessionId == sessionId && !participant.isArchived) { "Participant does not belong to this active purchase" }
+        require(dao.allocationCount(participantId) == 0 && dao.paymentCount(participantId) == 0) {
+            "A participant with allocations or payments cannot be archived; financial history must remain visible"
+        }
+        require(dao.archiveParticipant(sessionId, participantId) == 1) { "Participant could not be archived" }
+    }
+
+    suspend fun updateItem(
+        itemId: String,
+        title: String,
+        quantityMilli: Long,
+        unitPriceMinor: Long,
+        note: String? = null
+    ) = database.withTransaction {
+        val item = dao.findItem(itemId) ?: error("Purchase item not found")
+        val session = dao.findSession(item.sessionId) ?: error("Purchase session not found")
+        require(session.status == OPEN) { "Closed purchase sessions cannot be changed" }
+        require(dao.allocationCountForItem(itemId) == 0) { "Allocated items cannot be edited; allocation history must remain intact" }
+        val cleanTitle = title.trim()
+        require(cleanTitle.isNotEmpty()) { "Item title is required" }
+        val total = PurchaseMath.lineTotalMinor(quantityMilli, unitPriceMinor)
+        require(dao.updateItem(item.copy(
+            title = cleanTitle,
+            quantityMilli = quantityMilli,
+            unitPriceMinor = unitPriceMinor,
+            totalMinor = total,
+            note = note?.trim()?.takeIf { it.isNotEmpty() }
+        )) == 1) { "Purchase item could not be updated" }
+    }
+
+    suspend fun deleteUnallocatedItem(itemId: String) = database.withTransaction {
+        val item = dao.findItem(itemId) ?: error("Purchase item not found")
+        val session = dao.findSession(item.sessionId) ?: error("Purchase session not found")
+        require(session.status == OPEN) { "Closed purchase sessions cannot be changed" }
+        require(dao.allocationCountForItem(itemId) == 0) { "Allocated items cannot be deleted; financial history must remain intact" }
+        require(dao.deleteItem(itemId) == 1) { "Purchase item could not be deleted" }
+    }
+
     suspend fun addItem(
         sessionId: String,
         title: String,

@@ -84,6 +84,43 @@ class PurchaseDaoTest {
         assertTrue(runCatching { purchases.recordAllocationAsPersonalExpense(allocation.id, accountId, categoryId) }.isFailure)
     }
 
+    @Test fun participantCanBeRenamedAndArchivedOnlyBeforeFinancialActivity() = runBlocking {
+        val session = purchases.createSession("Family", "EGP", 2)
+        val editable = purchases.addParticipant(session, "Old name")
+        purchases.renameParticipant(session, editable, "New name")
+        assertEquals("New name", database.purchaseDao().findParticipant(editable)?.displayName)
+        purchases.archiveParticipant(session, editable)
+        assertTrue(database.purchaseDao().findParticipant(editable)?.isArchived == true)
+        assertTrue(database.purchaseDao().participants(session).isEmpty())
+
+        val active = purchases.addParticipant(session, "Active")
+        val item = purchases.addItem(session, "Bread", 1_000L, 250L)
+        purchases.allocateItem(item, mapOf(active to 250L))
+        assertTrue(runCatching { purchases.archiveParticipant(session, active) }.isFailure)
+        assertTrue(database.purchaseDao().findParticipant(active)?.isArchived == false)
+    }
+
+    @Test fun itemCanBeEditedOrDeletedOnlyBeforeAllocation() = runBlocking {
+        val session = purchases.createSession("Market", "EGP", 2)
+        val item = purchases.addItem(session, "Rice", 1_000L, 1_000L)
+        purchases.updateItem(item, "Premium rice", 2_000L, 1_500L, "Updated pack")
+        val updated = database.purchaseDao().findItem(item)!!
+        assertEquals("Premium rice", updated.title)
+        assertEquals(2_000L, updated.quantityMilli)
+        assertEquals(3_000L, updated.totalMinor)
+        assertEquals("Updated pack", updated.note)
+
+        val removable = purchases.addItem(session, "Milk", 1_000L, 500L)
+        purchases.deleteUnallocatedItem(removable)
+        assertTrue(database.purchaseDao().findItem(removable) == null)
+
+        val participant = purchases.addParticipant(session, "A")
+        purchases.allocateItem(item, mapOf(participant to 3_000L))
+        assertTrue(runCatching { purchases.updateItem(item, "Changed", 1_000L, 1_000L) }.isFailure)
+        assertTrue(runCatching { purchases.deleteUnallocatedItem(item) }.isFailure)
+        assertEquals("Premium rice", database.purchaseDao().findItem(item)?.title)
+    }
+
     @Test fun closingRequiresAllItemsAllocatedAndAllPositiveBalancesPaid() = runBlocking {
         val session = purchases.createSession("Trip", "EGP", 2)
         val participant = purchases.addParticipant(session, "A")
