@@ -54,7 +54,7 @@ interface PurchaseDao {
     suspend fun allocationsForItem(itemId: String): List<PurchaseAllocationEntity>
 
     @Query("""
-        SELECT a.id AS allocationId, i.title AS itemTitle, p.id AS participantId,
+        SELECT a.id AS allocationId, i.id AS itemId, i.title AS itemTitle, p.id AS participantId,
           p.displayName AS participantName, a.amountMinor AS amountMinor,
           l.transactionId AS personalTransactionId
         FROM purchase_allocations a
