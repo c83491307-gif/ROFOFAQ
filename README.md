@@ -65,7 +65,7 @@ gradle connectedDebugAndroidTest
 - [x] Two-level income/expense categories and transaction category validation.
 - [x] Account/category rename and safe archival UI with historical retention.
 - [x] Shared purchase sessions, participants, item-level exact allocations, actual payments, settlement balances and explicit personal-expense source links (see Phase 4 verification report).
-- [x] Monthly category budgets and manually maintained savings goals (Phase 5).
+- [x] Monthly category budgets, manually maintained savings goals, and local budget-overrun notifications (Phases 5 and 10; see `docs/implementation/PHASE_10_BUDGET_OVERRUN_ALERTS.md`).
 - [x] Monthly recurring expense rules and reviewable draft generation (Phase 6; drafts are not auto-posted).
 - [ ] Reports, cash-flow and forecasts.
 - [ ] Search, CSV import/export, validated backup/restore and app security.
