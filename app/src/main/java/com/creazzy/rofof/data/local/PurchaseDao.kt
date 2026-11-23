@@ -35,11 +35,17 @@ interface PurchaseDao {
     @Query("SELECT * FROM purchase_participants WHERE sessionId = :sessionId AND isArchived = 0 ORDER BY createdAtEpochMillis")
     suspend fun participants(sessionId: String): List<PurchaseParticipantEntity>
 
+    @Query("SELECT * FROM purchase_participants WHERE sessionId = :sessionId AND isArchived = 0 ORDER BY createdAtEpochMillis")
+    fun observeParticipants(sessionId: String): Flow<List<PurchaseParticipantEntity>>
+
     @Query("SELECT * FROM purchase_participants WHERE id = :id")
     suspend fun findParticipant(id: String): PurchaseParticipantEntity?
 
     @Query("SELECT * FROM purchase_items WHERE sessionId = :sessionId ORDER BY createdAtEpochMillis")
     suspend fun items(sessionId: String): List<PurchaseItemEntity>
+
+    @Query("SELECT * FROM purchase_items WHERE sessionId = :sessionId ORDER BY createdAtEpochMillis")
+    fun observeItems(sessionId: String): Flow<List<PurchaseItemEntity>>
 
     @Query("SELECT * FROM purchase_items WHERE id = :id")
     suspend fun findItem(id: String): PurchaseItemEntity?
