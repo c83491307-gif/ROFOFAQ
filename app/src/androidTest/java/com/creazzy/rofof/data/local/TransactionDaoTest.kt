@@ -80,6 +80,61 @@ class TransactionDaoTest {
     }
 
     @Test
+    fun transferChangesBothAccountBalancesWithoutCreatingIncomeOrExpense() = runBlocking {
+        val finance = com.creazzy.rofof.data.repository.RoomFinanceRepository(database)
+        val sourceId = finance.createAccount("Wallet A", "EGP", 2, 10000L)
+        val destinationId = finance.createAccount("Wallet B", "EGP", 2, 500L)
+
+        finance.transfer(sourceId, destinationId, 2500L, "Cash movement")
+
+        val balances = finance.observeAccounts().first().associateBy { it.id }
+        assertEquals(7500L, balances[sourceId]?.balanceMinor)
+        assertEquals(3000L, balances[destinationId]?.balanceMinor)
+        assertEquals(0L, database.transactionDao().observeIncomeSince(0L, "EGP").first())
+        assertEquals(0L, database.transactionDao().observeExpensesSince(0L, "EGP").first())
+        assertEquals(1, finance.observeTransfers().first().size)
+    }
+
+    @Test
+    fun transferRejectsDifferentCurrenciesAndLeavesBalancesUntouched() = runBlocking {
+        val finance = com.creazzy.rofof.data.repository.RoomFinanceRepository(database)
+        val egp = finance.createAccount("EGP wallet", "EGP", 2, 5000L)
+        val usd = finance.createAccount("USD wallet", "USD", 2, 5000L)
+
+        val failure = runCatching { finance.transfer(egp, usd, 100L) }
+        assertEquals(true, failure.isFailure)
+        val balances = finance.observeAccounts().first().associateBy { it.id }
+        assertEquals(5000L, balances[egp]?.balanceMinor)
+        assertEquals(5000L, balances[usd]?.balanceMinor)
+        assertEquals(0, finance.observeTransfers().first().size)
+    }
+
+    @Test
+    fun categoryHierarchyIsLimitedToTwoLevelsAndMatchingTypes() = runBlocking {
+        val finance = com.creazzy.rofof.data.repository.RoomFinanceRepository(database)
+        val parent = finance.createCategory("Food", "EXPENSE")
+        finance.createCategory("Groceries", "EXPENSE", parent)
+
+        val wrongType = runCatching { finance.createCategory("Salary child", "INCOME", parent) }
+        assertEquals(true, wrongType.isFailure)
+        val child = database.categoryDao().findByNameAndType("Groceries", "EXPENSE")!!
+        val thirdLevel = runCatching { finance.createCategory("Fresh food", "EXPENSE", child.id) }
+        assertEquals(true, thirdLevel.isFailure)
+    }
+
+    @Test
+    fun accountWithActivityCannotBeArchived() = runBlocking {
+        val finance = com.creazzy.rofof.data.repository.RoomFinanceRepository(database)
+        val accountId = finance.createAccount("Daily cash", "EGP", 2, 1000L)
+        database.transactionDao().insert(
+            TransactionEntity("tx-archive", "Lunch", "EXPENSE", 100L, "EGP", 2, accountId, "food", 1L, 1L, null)
+        )
+        val result = runCatching { finance.archiveAccount(accountId) }
+        assertEquals(true, result.isFailure)
+        assertEquals(false, database.accountDao().findById(accountId)?.isArchived)
+    }
+
+    @Test
     fun deletingOneTransactionDoesNotDeleteOthers() = runBlocking {
         val dao = database.transactionDao()
         dao.insert(TransactionEntity("one", "A", "EXPENSE", 100, "EGP", 2, "cash", "general", 1L, 1L, null))
