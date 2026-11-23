@@ -62,10 +62,12 @@ class PurchaseViewModel(application: Application) : AndroidViewModel(application
     fun addItem(title: String, quantity: String, unitPrice: String) {
         val sessionId = selectedId.value ?: return
         val session = sessions.value.firstOrNull { it.id == sessionId } ?: return
-        val quantityMilli = BigDecimal(quantity.trim().replace(',', '.'))
-            .setScale(3, RoundingMode.UNNECESSARY).movePointRight(3).longValueExact()
-        val unitPriceMinor = toMinor(unitPrice, session.currencyExponent)
-        execute { repository.addItem(sessionId, title, quantityMilli, unitPriceMinor) }
+        execute {
+            val quantityMilli = BigDecimal(quantity.trim().replace(',', '.'))
+                .setScale(3, RoundingMode.UNNECESSARY).movePointRight(3).longValueExact()
+            val unitPriceMinor = toMinor(unitPrice, session.currencyExponent)
+            repository.addItem(sessionId, title, quantityMilli, unitPriceMinor)
+        }
     }
 
     fun allocate(itemId: String, amountByParticipant: Map<String, String>) {
