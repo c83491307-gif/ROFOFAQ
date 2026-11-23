@@ -38,6 +38,24 @@ class RoomTransactionRepository(
         transactionDao.insert(transaction.toEntity())
     }
 
+    override suspend fun update(transaction: LedgerTransaction) {
+        require(transaction.title.isNotBlank()) { "Transaction title is required" }
+        require(transaction.amountMinor > 0L) { "Transaction amount must be positive" }
+        require(transaction.transactionType == INCOME || transaction.transactionType == EXPENSE) {
+            "Only income and expense transactions belong in the ledger"
+        }
+        val account = accountDao.findById(transaction.accountId) ?: error("Account not found")
+        require(!account.isArchived) { "Archived accounts cannot receive transactions" }
+        require(account.currencyCode == transaction.currencyCode && account.currencyExponent == transaction.currencyExponent) {
+            "Transaction currency must match its account"
+        }
+        val category = categoryDao.findById(transaction.categoryId) ?: error("Category not found")
+        require(!category.isArchived && category.transactionType == transaction.transactionType) {
+            "Transaction category type must match the transaction"
+        }
+        require(transactionDao.update(transaction.toEntity()) == 1) { "Transaction not found" }
+    }
+
     override suspend fun delete(id: String) = transactionDao.delete(id)
 
     suspend fun ensureDefaults() {
