@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.creazzy.rofof.feature.dashboard.DashboardScreen
 import com.creazzy.rofof.feature.purchases.PurchaseManagementScreen
 import com.creazzy.rofof.feature.budgetgoals.BudgetGoalsScreen
+import com.creazzy.rofof.feature.recurring.RecurringManagementScreen
 
 @Composable
 fun ROFOFRootScreen() {
@@ -39,12 +40,16 @@ fun ROFOFRootScreen() {
             TextButton(onClick = { destination = "budgetgoals" }) {
                 Text("الميزانيات والأهداف · Plans", color = if (destination == "budgetgoals") Color(0xFF147D64) else MaterialTheme.colorScheme.onSurface)
             }
+            TextButton(onClick = { destination = "recurring" }) {
+                Text("المتكرر · Recurring", color = if (destination == "recurring") Color(0xFF147D64) else MaterialTheme.colorScheme.onSurface)
+            }
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when (destination) {
                 "dashboard" -> DashboardScreen()
                 "purchases" -> PurchaseManagementScreen(onBack = { destination = "dashboard" })
-                else -> BudgetGoalsScreen(onBack = { destination = "dashboard" })
+                "budgetgoals" -> BudgetGoalsScreen(onBack = { destination = "dashboard" })
+                else -> RecurringManagementScreen(onBack = { destination = "dashboard" })
             }
         }
     }

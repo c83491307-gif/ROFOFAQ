@@ -22,9 +22,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PurchasePaymentEntity::class,
         AllocationPersonalExpenseLinkEntity::class,
         BudgetEntity::class,
-        FinancialGoalEntity::class
+        FinancialGoalEntity::class,
+        RecurringRuleEntity::class,
+        RecurringDraftEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class RofofDatabase : RoomDatabase() {
@@ -36,6 +38,7 @@ abstract class RofofDatabase : RoomDatabase() {
     abstract fun transferDao(): TransferDao
     abstract fun purchaseDao(): PurchaseDao
     abstract fun budgetGoalDao(): BudgetGoalDao
+    abstract fun recurringDao(): RecurringDao
 
     companion object {
         @Volatile
@@ -293,6 +296,28 @@ abstract class RofofDatabase : RoomDatabase() {
             }
         }
 
+
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""CREATE TABLE IF NOT EXISTS recurring_rules (
+                    id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, transactionType TEXT NOT NULL,
+                    amountMinor INTEGER NOT NULL, currencyCode TEXT NOT NULL, currencyExponent INTEGER NOT NULL,
+                    accountId TEXT NOT NULL, categoryId TEXT NOT NULL, intervalType TEXT NOT NULL,
+                    intervalCount INTEGER NOT NULL, nextRunEpochMillis INTEGER NOT NULL, endEpochMillis INTEGER,
+                    isActive INTEGER NOT NULL, createdAtEpochMillis INTEGER NOT NULL
+                )""")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_recurring_rules_isActive_nextRunEpochMillis ON recurring_rules (isActive, nextRunEpochMillis)")
+                database.execSQL("""CREATE TABLE IF NOT EXISTS recurring_drafts (
+                    id TEXT NOT NULL PRIMARY KEY, ruleId TEXT NOT NULL, scheduledForEpochMillis INTEGER NOT NULL,
+                    title TEXT NOT NULL, transactionType TEXT NOT NULL, amountMinor INTEGER NOT NULL,
+                    currencyCode TEXT NOT NULL, currencyExponent INTEGER NOT NULL, accountId TEXT NOT NULL,
+                    categoryId TEXT NOT NULL, status TEXT NOT NULL, createdAtEpochMillis INTEGER NOT NULL
+                )""")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_recurring_drafts_ruleId_scheduledForEpochMillis ON recurring_drafts (ruleId, scheduledForEpochMillis)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_recurring_drafts_status_scheduledForEpochMillis ON recurring_drafts (status, scheduledForEpochMillis)")
+            }
+        }
+
         fun getInstance(context: Context): RofofDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -300,7 +325,7 @@ abstract class RofofDatabase : RoomDatabase() {
                     RofofDatabase::class.java,
                     "rofof-local.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .build()
                     .also { instance = it }
             }
