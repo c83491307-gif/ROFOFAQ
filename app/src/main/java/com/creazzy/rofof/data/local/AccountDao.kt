@@ -8,8 +8,30 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AccountDao {
-    @Query("SELECT * FROM accounts WHERE isArchived = 0 ORDER BY name COLLATE NOCASE")
-    fun observeActive(): Flow<List<AccountEntity>>
+    @Query("""
+        SELECT accounts.*,
+            accounts.openingBalanceMinor
+            + COALESCE((
+                SELECT SUM(CASE
+                    WHEN transactions.transactionType = 'INCOME' THEN transactions.amountMinor
+                    WHEN transactions.transactionType = 'EXPENSE' THEN -transactions.amountMinor
+                    ELSE 0
+                END)
+                FROM transactions WHERE transactions.accountId = accounts.id
+            ), 0)
+            + COALESCE((
+                SELECT SUM(transfers.amountMinor)
+                FROM transfers WHERE transfers.toAccountId = accounts.id
+            ), 0)
+            - COALESCE((
+                SELECT SUM(transfers.amountMinor)
+                FROM transfers WHERE transfers.fromAccountId = accounts.id
+            ), 0) AS balanceMinor
+        FROM accounts
+        WHERE accounts.isArchived = 0
+        ORDER BY accounts.name COLLATE NOCASE
+    """)
+    fun observeBalances(): Flow<List<AccountBalance>>
 
     @Query("SELECT * FROM accounts WHERE id = :id LIMIT 1")
     suspend fun findById(id: String): AccountEntity?
