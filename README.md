@@ -35,4 +35,4 @@ gradle assembleDebug
 gradle connectedDebugAndroidTest
 ```
 
-The initial foundation is not the complete product. Purchase sessions, participants, allocations, contributions, settlements, My Expenses, reporting, backup/restore and the remaining v1.2.0 modules are implemented in subsequent workstreams. Do not treat the current launcher screen as a finished product UI.
+The Android UI now includes a bilingual Arabic/English expense dashboard, explicit RTL/LTR switching, and a Room-backed personal-expense flow. Shared purchase sessions, participants, allocations, contributions, settlements, reporting, backup/restore and the remaining v1.2.0 modules are still subsequent workstreams.
