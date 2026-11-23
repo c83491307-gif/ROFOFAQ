@@ -14,9 +14,15 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AccountEntity::class,
         CategoryEntity::class,
         TransactionEntity::class,
-        TransferEntity::class
+        TransferEntity::class,
+        PurchaseSessionEntity::class,
+        PurchaseParticipantEntity::class,
+        PurchaseItemEntity::class,
+        PurchaseAllocationEntity::class,
+        PurchasePaymentEntity::class,
+        AllocationPersonalExpenseLinkEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class RofofDatabase : RoomDatabase() {
@@ -26,6 +32,7 @@ abstract class RofofDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun transactionDao(): TransactionDao
     abstract fun transferDao(): TransferDao
+    abstract fun purchaseDao(): PurchaseDao
 
     companion object {
         @Volatile
@@ -204,6 +211,55 @@ abstract class RofofDatabase : RoomDatabase() {
             }
         }
 
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""CREATE TABLE IF NOT EXISTS purchase_sessions (
+                    id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, notes TEXT,
+                    currencyCode TEXT NOT NULL, currencyExponent INTEGER NOT NULL,
+                    status TEXT NOT NULL, createdAtEpochMillis INTEGER NOT NULL,
+                    updatedAtEpochMillis INTEGER NOT NULL)""")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_sessions_createdAtEpochMillis ON purchase_sessions (createdAtEpochMillis)")
+                database.execSQL("""CREATE TABLE IF NOT EXISTS purchase_participants (
+                    id TEXT NOT NULL PRIMARY KEY, sessionId TEXT NOT NULL, displayName TEXT NOT NULL,
+                    note TEXT, isArchived INTEGER NOT NULL, createdAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(sessionId) REFERENCES purchase_sessions(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_participants_sessionId ON purchase_participants (sessionId)")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_purchase_participants_sessionId_displayName ON purchase_participants (sessionId, displayName)")
+                database.execSQL("""CREATE TABLE IF NOT EXISTS purchase_items (
+                    id TEXT NOT NULL PRIMARY KEY, sessionId TEXT NOT NULL, title TEXT NOT NULL,
+                    quantityMilli INTEGER NOT NULL, unitPriceMinor INTEGER NOT NULL, totalMinor INTEGER NOT NULL,
+                    note TEXT, createdAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(sessionId) REFERENCES purchase_sessions(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_items_sessionId ON purchase_items (sessionId)")
+                database.execSQL("""CREATE TABLE IF NOT EXISTS purchase_allocations (
+                    id TEXT NOT NULL PRIMARY KEY, itemId TEXT NOT NULL, participantId TEXT NOT NULL,
+                    amountMinor INTEGER NOT NULL, createdAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(itemId) REFERENCES purchase_items(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                    FOREIGN KEY(participantId) REFERENCES purchase_participants(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_allocations_itemId ON purchase_allocations (itemId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_allocations_participantId ON purchase_allocations (participantId)")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_purchase_allocations_itemId_participantId ON purchase_allocations (itemId, participantId)")
+                database.execSQL("""CREATE TABLE IF NOT EXISTS purchase_payments (
+                    id TEXT NOT NULL PRIMARY KEY, sessionId TEXT NOT NULL, participantId TEXT NOT NULL,
+                    amountMinor INTEGER NOT NULL, paymentMethod TEXT NOT NULL, idempotencyKey TEXT NOT NULL,
+                    note TEXT, occurredAtEpochMillis INTEGER NOT NULL, createdAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(sessionId) REFERENCES purchase_sessions(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                    FOREIGN KEY(participantId) REFERENCES purchase_participants(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_payments_sessionId ON purchase_payments (sessionId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_payments_participantId ON purchase_payments (participantId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_payments_occurredAtEpochMillis ON purchase_payments (occurredAtEpochMillis)")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_purchase_payments_idempotencyKey ON purchase_payments (idempotencyKey)")
+                database.execSQL("""CREATE TABLE IF NOT EXISTS allocation_personal_expense_links (
+                    id TEXT NOT NULL PRIMARY KEY, allocationId TEXT NOT NULL, transactionId TEXT NOT NULL,
+                    createdAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(allocationId) REFERENCES purchase_allocations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                    FOREIGN KEY(transactionId) REFERENCES transactions(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_allocation_personal_expense_links_allocationId ON allocation_personal_expense_links (allocationId)")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_allocation_personal_expense_links_transactionId ON allocation_personal_expense_links (transactionId)")
+            }
+        }
+
         fun getInstance(context: Context): RofofDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -211,7 +267,7 @@ abstract class RofofDatabase : RoomDatabase() {
                     RofofDatabase::class.java,
                     "rofof-local.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                     .also { instance = it }
             }
