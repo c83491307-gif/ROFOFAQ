@@ -38,6 +38,13 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val transfers = financeRepository.observeTransfers()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val totals = database.transactionDao().observeTotals("EGP", 2)
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            com.creazzy.rofof.data.local.TransactionTotals(0L, 0L)
+        )
+
     fun createAccount(name: String, currencyCode: String, exponent: Int, openingBalance: String) {
         val minor = runCatching {
             BigDecimal(openingBalance.trim().replace(',', '.'))
