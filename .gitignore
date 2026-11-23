@@ -1,5 +1,31 @@
-# Object file
-*.o
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+*.hprof
+.externalNativeBuild/
+.cxx/
 
-# Ada Library Information
-*.ali
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Signing material and secrets
+*.jks
+*.keystore
+keystore.properties
+secrets.properties
+.env
+.env.*
+
+# Kotlin / JVM
+.kotlin/
+out/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
