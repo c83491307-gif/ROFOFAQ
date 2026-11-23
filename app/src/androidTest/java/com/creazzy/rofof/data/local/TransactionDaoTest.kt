@@ -60,6 +60,26 @@ class TransactionDaoTest {
     }
 
     @Test
+    fun repositorySeedsOneLocalCashAccountAndTypedGeneralCategories() = runBlocking {
+        val repository = com.creazzy.rofof.data.repository.RoomTransactionRepository(
+            database.transactionDao(),
+            database.accountDao(),
+            database.categoryDao()
+        )
+        repository.ensureDefaults()
+
+        assertEquals("Cash", database.accountDao().findById("default-cash")?.name)
+        assertEquals(
+            "EXPENSE",
+            database.categoryDao().findById("default-expense-general")?.transactionType
+        )
+        assertEquals(
+            "INCOME",
+            database.categoryDao().findById("default-income-general")?.transactionType
+        )
+    }
+
+    @Test
     fun deletingOneTransactionDoesNotDeleteOthers() = runBlocking {
         val dao = database.transactionDao()
         dao.insert(TransactionEntity("one", "A", "EXPENSE", 100, "EGP", 2, "cash", "general", 1L, 1L, null))
