@@ -1,34 +1,53 @@
-# ROFOF Phase 2 — Bilingual Android Dashboard and Local Expenses
+# ROFOF — README Application and Core Ledger
 
-**Status:** Source implementation committed on an isolated work branch; Android CI verification pending.  
-**Branch:** `work/rofof-dashboard-ui`  
-**Architecture:** Android local-first; Room remains the local source of truth.
+**Status:** Source changes committed; latest-head CI verification is still required.  
+**Branch:** `feat/rofof-android-foundation`  
+**Reference:** Original `main/README.md` product roadmap, adapted to the approved native Android local-first architecture.
 
-## Delivered
+## Applied from the original README
 
-- Replaced the launcher placeholder with a Material 3 expense dashboard.
-- Added Arabic and English UI copy with an in-app language switch.
-- Applies RTL for Arabic and LTR for English through Compose layout direction.
-- Persists the selected language in the existing Room local-preferences table.
-- Added a Room `expenses` table and DAO with newest-first observation, insertion, deletion and total-since query.
-- Added a repository contract and Room-backed implementation.
-- Added an AndroidViewModel that exposes persisted expense records and handles local writes.
-- Added an add-expense dialog and recent-expenses list; deletion removes the selected persisted record.
-- Added EGP amount parsing using `BigDecimal` and integer minor units; UI formatting also uses `BigDecimal`, not floating-point arithmetic.
-- Added a Room migration from schema version 1 to version 2, preserving existing local preferences.
-- Added instrumentation tests for expense persistence, ordering, summation and deletion.
+- Preserved the daily personal-finance purpose and the roadmap categories.
+- Applied native Android with Kotlin, Jetpack Compose and Room instead of introducing the README's alternative Flutter/PWA/backend stacks.
+- Kept Room as the device-local source of truth; no account, server, banking sync or internet dependency was added.
+- Retained Arabic/English UI and RTL/LTR switching.
+- Expanded the personal-expense-only screen into a local income/expense ledger.
+- Added a typed transaction model, accounts and categories tables, and a Room repository boundary.
+- Added a schema migration from version 2 to version 3.
+- Migrates previously stored expenses into the new transaction ledger, retaining the transaction ID, amount, currency code/exponent, timestamps and original category labels.
+- Preserves separate cash account records for each legacy currency, rather than assigning foreign-currency records to the EGP account.
+- Dashboard now shows income, expenses and net balance, and allows adding income or expense transactions.
+- Added explicit delete confirmation.
+- Added DAO instrumentation tests for transaction ordering, persistence, deletion and currency-scoped totals.
 
-## Data behavior
+## Data integrity choices
 
-- The dashboard total is calculated from records observed from Room; no sample/demo expenses are inserted.
-- New entries are stored as integer piastres with currency code `EGP` and exponent `2`.
-- A failed/invalid amount is not written.
-- Data remains local to the device. No account, backend, network permission, cloud sync or remote service is introduced.
+- Amounts remain integer minor units with explicit currency metadata.
+- Income and expenses are separate transaction types.
+- Aggregates are scoped to currency; the dashboard currently displays the EGP default account and should not be interpreted as a cross-currency consolidated balance.
+- Legacy category labels are preserved during migration.
+- Existing expense rows remain in the legacy table as a migration source; new UI writes to the canonical transactions table.
+- Account/category management, transfers and account-aware balances are still pending.
+
+## README roadmap status
+
+Implemented in source:
+- Android local-first foundation.
+- Arabic/English and RTL/LTR dashboard.
+- Income/expense transaction add, recent-list, totals and confirmed delete.
+- Default local cash account and typed categories.
+- Migration of prior expenses into the transaction ledger.
+
+Still pending:
+- User-managed multiple accounts, transfers and account balances.
+- Category CRUD, subcategories, tags, splits, recurring templates and receipt attachments.
+- Budgets, savings goals, loans and alerts.
+- Reports, cash-flow charts, net worth and forecasting.
+- Advanced search, CSV import/export and backup/restore.
+- App lock, encryption hardening and optional multi-user capability.
+- Optional OCR/AI workflows and future web/PWA/sync clients.
 
 ## Verification
 
-The previous foundation CI run had already passed JVM unit tests, Android lint and debug APK assembly; its emulator-backed Room tests were still running when the dashboard work began. This UI branch must be built and tested as the new final head. Do not claim the new UI compiles or the instrumentation tests pass until a complete CI run reports success.
+The earlier foundation run passed JVM unit tests, lint and debug APK assembly, but its emulator-backed test step was cancelled. No completed CI run for the latest ledger commit is available yet. The new transaction instrumentation tests and the migration must pass on the latest head before this phase can be marked verified.
 
-## Scope still outstanding
-
-This phase is a real personal-expense vertical slice, not the complete ROFOF product. It does not yet implement shared purchase sessions, participants, allocation/remainder calculations, contributions, settlements, transfer-to-personal-expenses confirmation, budgets, inventory, OCR drafts, reports, export or backup/restore. Those workflows must be added against the approved specifications and protected by invariant tests.
+No merge or deployment has been performed.
