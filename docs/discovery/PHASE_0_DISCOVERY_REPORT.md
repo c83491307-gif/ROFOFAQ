@@ -1,6 +1,6 @@
 # ROFOF Phase 0 — Discovery Report
 
-**Status:** Discovery baseline completed; implementation not started.  
+**Status:** Discovery baseline completed; architecture decision approved; Android implementation foundation pending.  
 **Repository:** `c83491307-gif/ROFOFAQ`  
 **Inspection branch:** `feat/rofof-phase0-discovery`  
 **Source branch:** `c83491307-gif-patch-1`  
@@ -74,21 +74,39 @@ It contains no live purchase sessions, purchase lines, participants, allocations
 
 The SQL schema uses REAL for unit conversion factors and habit target values; these are reference quantities, not monetary fields. Money in the production domain must follow the fixed-point rules above.
 
-## 6. Architecture decisions requiring resolution
+## 6. Architecture decisions
 
-### ADR-001 — Local-first authority versus server authority
+### ADR-001 — Local-first authority (Accepted 2026-11-23)
 
-The Android baseline (document 07) says core workflows work offline, require no account/network, and treats the local database as the source of truth. The Engineering Pack skill/target architecture instead describes PostgreSQL as the authoritative server-side source of truth and Room as local persistence/cache.
+The user explicitly approved Android local-first operation, with backend and synchronization designed as optional future capabilities.
 
-These are materially different authority models. Proposed safe interpretation for decision: keep core single-device operation fully local-first and make cloud identity/sync an explicit opt-in extension; when sync is enabled, define server authority and conflict/reconciliation rules only for synchronized shared state. This proposal is not yet an approved product decision and must be confirmed before backend/schema implementation.
+- Room is the authoritative store for first-release device data.
+- Core workflows require no account, network, backend or remote service.
+- Domain and use cases remain independent of Android, Room and transport frameworks.
+- Repository interfaces isolate persistence adapters.
+- No automatic upload, remote backup or sync worker is part of the first-release foundation.
+- Any future synchronization requires explicit opt-in and a separate design for identity, workspace boundaries, conflicts, idempotency, deletion and audit.
+- Server authority for synchronized collaborative workspaces requires a separately approved decision.
 
-### ADR-002 — Backend scope
+See `docs/architecture/ADR-001-LOCAL-FIRST-AUTHORITY.md`.
 
-The Engineering Pack adds Kotlin/Spring Boot, PostgreSQL, versioned REST APIs, authentication/authorization, background jobs, object storage and CI/CD. The baseline v1.2.0 Android specification does not require an account or network for core workflows and excludes several cloud behaviors from the first release. Decide whether backend is part of the first delivery or a separately gated optional deployment.
+### ADR-002 — Backend scope (Resolved for first release)
 
-### ADR-003 — OCR and external services
+Backend is deferred. It may be introduced later as an optional separately gated deployment. The first-release Android application must be fully useful without it.
 
-OCR, maps, barcode lookups, remote lookups and sync must respect opt-in/privacy boundaries. OCR extraction must remain a draft requiring human verification. No external processing or upload should occur silently.
+### ADR-003 — OCR and external services (Policy retained)
+
+OCR, maps, barcode lookups, remote lookups and sync must respect opt-in/privacy boundaries. OCR extraction remains a draft requiring human verification. No external processing or upload may occur silently.
+
+## 7. Immediate engineering gaps
+
+- No native Android application source or Gradle project existed in the inspected baseline.
+- No production Room schema, migrations or DAOs existed.
+- No financial domain engine or ledger existed.
+- No application navigation, localization resources, or real UI existed.
+- No backend/API/database migrations existed.
+- No tests, CI workflows, build artifacts, or APK existed.
+- Existing `.gitignore` was not aligned with the proposed stack.
 
 ## 7. Immediate engineering gaps
 
@@ -102,15 +120,19 @@ OCR, maps, barcode lookups, remote lookups and sync must respect opt-in/privacy 
 
 ## 8. Next implementation sequence
 
-1. Approve ADR-001 and ADR-002 (local-only first release versus optional/required backend).
-2. Produce a requirement traceability matrix linking every requirement to domain, entity, screen, migration/API, and test.
-3. Design production transactional schema separately from the reference seed database.
-4. Implement and test the financial/quantity engine before connecting UI.
-5. Establish Android Gradle project, Room migrations, localization and CI.
-6. Implement purchase/participant/allocation/payment flows and independent My Expenses.
-7. Add the v1.2.0 extension modules in dependency order.
-8. Verify backup/restore, offline recovery, accessibility, financial invariants and end-to-end workflows before release.
+1. Complete the architecture and transactional data contracts.
+2. Establish the Android Gradle project, Room migrations, localization and CI.
+3. Implement and test Money, quantity, allocation, rounding and balance policies.
+4. Implement purchase/participant/allocation/contribution/settlement workflows.
+5. Implement the independent My Expenses ledger and explicit linked transfer.
+6. Add the v1.2.0 extension modules in dependency order.
+7. Verify backup/restore, offline recovery, accessibility, financial invariants and end-to-end workflows before release.
+
+The approved design and initial logical data model are recorded in:
+- `docs/architecture/ANDROID_ARCHITECTURE.md`
+- `docs/architecture/TRANSACTIONAL_DATA_MODEL.md`
+- `docs/architecture/PHASE_1_EXECUTION_PLAN.md`
 
 ## 9. Evidence and limitations
 
-This report is based on the uploaded archive and the inspected GitHub branch files/commit. No source code was changed, no APK was built, and no application tests were run. The discovery branch contains this report only at this stage. The two architecture decisions above remain open.
+The uploaded archive and inspected GitHub branch were used as the source baseline. Four architecture documents were added on the feature branch. No Android source code, Gradle project, APK or application tests have been produced yet. The logical data model is not yet a physical Room schema. No merge or deployment occurred.
