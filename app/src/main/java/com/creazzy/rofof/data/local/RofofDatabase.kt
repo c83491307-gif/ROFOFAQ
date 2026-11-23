@@ -13,9 +13,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ExpenseEntity::class,
         AccountEntity::class,
         CategoryEntity::class,
-        TransactionEntity::class
+        TransactionEntity::class,
+        TransferEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class RofofDatabase : RoomDatabase() {
@@ -24,6 +25,7 @@ abstract class RofofDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun categoryDao(): CategoryDao
     abstract fun transactionDao(): TransactionDao
+    abstract fun transferDao(): TransferDao
 
     companion object {
         @Volatile
@@ -175,6 +177,32 @@ abstract class RofofDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS transfers (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        fromAccountId TEXT NOT NULL,
+                        toAccountId TEXT NOT NULL,
+                        amountMinor INTEGER NOT NULL,
+                        currencyCode TEXT NOT NULL,
+                        currencyExponent INTEGER NOT NULL,
+                        occurredAtEpochMillis INTEGER NOT NULL,
+                        createdAtEpochMillis INTEGER NOT NULL,
+                        note TEXT
+                    )
+                    """.trimIndent()
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_transfers_fromAccountId_occurredAtEpochMillis ON transfers (fromAccountId, occurredAtEpochMillis)"
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_transfers_toAccountId_occurredAtEpochMillis ON transfers (toAccountId, occurredAtEpochMillis)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): RofofDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -182,7 +210,7 @@ abstract class RofofDatabase : RoomDatabase() {
                     RofofDatabase::class.java,
                     "rofof-local.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { instance = it }
             }
