@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.creazzy.rofof.feature.dashboard.DashboardScreen
 import com.creazzy.rofof.feature.purchases.PurchaseManagementScreen
+import com.creazzy.rofof.feature.budgetgoals.BudgetGoalsScreen
 
 @Composable
 fun ROFOFRootScreen() {
@@ -35,10 +36,16 @@ fun ROFOFRootScreen() {
             TextButton(onClick = { destination = "purchases" }) {
                 Text("المشتريات المشتركة · Shared", color = if (destination == "purchases") Color(0xFF147D64) else MaterialTheme.colorScheme.onSurface)
             }
+            TextButton(onClick = { destination = "budgetgoals" }) {
+                Text("الميزانيات والأهداف · Plans", color = if (destination == "budgetgoals") Color(0xFF147D64) else MaterialTheme.colorScheme.onSurface)
+            }
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            if (destination == "dashboard") DashboardScreen()
-            else PurchaseManagementScreen(onBack = { destination = "dashboard" })
+            when (destination) {
+                "dashboard" -> DashboardScreen()
+                "purchases" -> PurchaseManagementScreen(onBack = { destination = "dashboard" })
+                else -> BudgetGoalsScreen(onBack = { destination = "dashboard" })
+            }
         }
     }
 }
