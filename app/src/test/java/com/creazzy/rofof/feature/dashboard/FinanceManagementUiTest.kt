@@ -1,9 +1,8 @@
 package com.creazzy.rofof.feature.dashboard
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.test.assertDoesNotExist
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -11,6 +10,7 @@ import androidx.compose.ui.test.performTextReplacement
 import com.creazzy.rofof.data.local.AccountBalance
 import com.creazzy.rofof.data.local.CategoryEntity
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -77,8 +77,8 @@ class FinanceManagementUiTest {
                 )
             }
         }
-        compose.onNodeWithTag("account_archive_default-cash").assertDoesNotExist()
-        compose.onNodeWithText("Cash").assertExists()
+        assertTrue(compose.onAllNodesWithTag("account_archive_default-cash").fetchSemanticsNodes().isEmpty())
+        compose.onNodeWithText("Cash").fetchSemanticsNode()
     }
 
     @Test
@@ -91,9 +91,9 @@ class FinanceManagementUiTest {
                 )
             }
         }
-        compose.onNodeWithText("Archived").assertExists()
-        compose.onNodeWithTag("account_edit_wallet-1").assertDoesNotExist()
-        compose.onNodeWithTag("account_archive_wallet-1").assertDoesNotExist()
+        compose.onNodeWithText("Archived").fetchSemanticsNode()
+        assertTrue(compose.onAllNodesWithTag("account_edit_wallet-1").fetchSemanticsNodes().isEmpty())
+        assertTrue(compose.onAllNodesWithTag("account_archive_wallet-1").fetchSemanticsNodes().isEmpty())
     }
 
     @Test
@@ -145,8 +145,8 @@ class FinanceManagementUiTest {
                 )
             }
         }
-        compose.onNodeWithText("Archived").assertExists()
-        compose.onNodeWithTag("category_edit_food").assertDoesNotExist()
-        compose.onNodeWithTag("category_archive_food").assertDoesNotExist()
+        compose.onNodeWithText("Archived").fetchSemanticsNode()
+        assertTrue(compose.onAllNodesWithTag("category_edit_food").fetchSemanticsNodes().isEmpty())
+        assertTrue(compose.onAllNodesWithTag("category_archive_food").fetchSemanticsNodes().isEmpty())
     }
 }
