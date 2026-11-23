@@ -69,7 +69,7 @@ fun AccountManagerDialog(
         confirmButton = {
             Button(
                 onClick = { onCreate(name, currency, exponent.toIntOrNull() ?: 2, opening) },
-                enabled = name.isNotBlank() && currency.matches(Regex("[A-Z]{3}")) && (exponent.toIntOrNull() in 0..4),
+                enabled = name.isNotBlank() && currency.matches(Regex("[A-Z]{3}")) && ((exponent.toIntOrNull() ?: -1) in 0..4),
             ) { Text(if (ar) "إضافة الحساب" else "Add account") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(if (ar) "إغلاق" else "Close") } }
