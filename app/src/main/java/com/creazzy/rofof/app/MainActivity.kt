@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
-import com.creazzy.rofof.feature.dashboard.DashboardScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,7 +25,7 @@ class MainActivity : ComponentActivity() {
                     surface = Color.White
                 )
             ) {
-                DashboardScreen()
+                ROFOFRootScreen()
             }
         }
     }
