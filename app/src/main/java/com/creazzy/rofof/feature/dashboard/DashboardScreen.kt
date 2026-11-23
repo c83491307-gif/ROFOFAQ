@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.creazzy.rofof.data.local.ExpenseEntity
+import java.math.BigDecimal
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Currency
@@ -241,7 +243,7 @@ private fun formatEgp(minor: Long, language: String): String {
         currency = Currency.getInstance("EGP")
         minimumFractionDigits = 2
         maximumFractionDigits = 2
-    }.format(minor / 100.0)
+    }.format(BigDecimal.valueOf(minor, 2))
 }
 
 private fun dateLabel(epoch: Long, language: String): String =
