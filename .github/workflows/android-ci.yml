@@ -1,6 +1,7 @@
 name: Android CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, c83491307-gif-patch-1, "feat/rofof-**"]
   pull_request:
