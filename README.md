@@ -68,7 +68,8 @@ gradle connectedDebugAndroidTest
 - [x] Monthly category budgets and manually maintained savings goals (Phase 5).
 - [x] Monthly recurring expense rules and reviewable draft generation (Phase 6; drafts are not auto-posted).
 - [ ] Reports, cash-flow and forecasts.
-- [ ] Search, CSV import/export, validated backup/restore and app security.
+- [x] User-initiated local ledger transaction CSV export (Phase 8).
+- [ ] CSV import, full backup/restore and app security.
 - [ ] Optional OCR and future web/sync extensions.
 
 The checked items above describe delivered source functionality, not a claim that the latest branch has passed CI. See the implementation reports for exact verification evidence, including [Priority 2 shared purchases](docs/implementation/PHASE_4_SHARED_PURCHASES.md).
