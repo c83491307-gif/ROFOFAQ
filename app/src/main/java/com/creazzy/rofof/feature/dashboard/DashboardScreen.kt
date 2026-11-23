@@ -63,6 +63,7 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     val transactions by expenseViewModel.transactions.collectAsState()
     val categories by expenseViewModel.categories.collectAsState()
     val accounts by expenseViewModel.accounts.collectAsState()
+    val totals by expenseViewModel.totals.collectAsState()
     val language by expenseViewModel.language.collectAsState()
     val isArabic = language == "ar"
     val direction = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -73,11 +74,8 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     var showCategories by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<LedgerTransaction?>(null) }
 
-    val egpTransactions = transactions.filter { it.currencyCode == "EGP" && it.currencyExponent == 2 }
-    val income = egpTransactions.asSequence().filter { it.transactionType == "INCOME" }
-        .fold(0L) { total, item -> Math.addExact(total, item.amountMinor) }
-    val expenses = egpTransactions.asSequence().filter { it.transactionType == "EXPENSE" }
-        .fold(0L) { total, item -> Math.addExact(total, item.amountMinor) }
+    val income = totals.incomeMinor
+    val expenses = totals.expenseMinor
     val net = accounts.asSequence()
         .filter { it.currencyCode == "EGP" && it.currencyExponent == 2 }
         .fold(0L) { total, account -> Math.addExact(total, account.balanceMinor) }
