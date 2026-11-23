@@ -86,7 +86,7 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
                 }
 
                 Spacer(Modifier.height(22.dp))
-                val total = expenses.sumOf { it.amountMinor }
+                val total = expenses.fold(0L) { accumulated, expense -> Math.addExact(accumulated, expense.amountMinor) }
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(28.dp),
@@ -191,7 +191,7 @@ private fun ExpenseRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(expense.title, color = Ink, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    dateLabel(expense.occurredAtEpochMillis, language),
+                    expense.category + "  ·  " + dateLabel(expense.occurredAtEpochMillis, language),
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall
                 )
