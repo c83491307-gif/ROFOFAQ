@@ -22,4 +22,10 @@ interface TransactionDao {
 
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("SELECT COUNT(*) > 0 FROM transactions WHERE accountId = :accountId")
+    suspend fun hasTransactionsForAccount(accountId: String): Boolean
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE categoryId = :categoryId")
+    suspend fun countForCategory(categoryId: String): Int
 }
