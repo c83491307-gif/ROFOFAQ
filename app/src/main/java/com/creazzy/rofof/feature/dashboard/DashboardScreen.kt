@@ -251,7 +251,6 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
             containerColor = Color.White
         )
     }
-}
 
     financeActionMessage?.let { message ->
         AlertDialog(
@@ -266,7 +265,7 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
             containerColor = Color.White
         )
     }
-
+}
 
 @Composable
 private fun BalanceMetric(label: String, amount: Long, color: Color, language: String, modifier: Modifier) {
