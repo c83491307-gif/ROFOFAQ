@@ -9,6 +9,7 @@ import com.creazzy.rofof.data.local.LocalPreferenceEntity
 import com.creazzy.rofof.data.local.RofofDatabase
 import com.creazzy.rofof.data.repository.RoomTransactionRepository
 import com.creazzy.rofof.domain.model.LedgerTransaction
+import com.creazzy.rofof.feature.budgetgoals.BudgetOverrunNotifier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,6 +23,7 @@ import java.util.UUID
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
     private val database = RofofDatabase.getInstance(application)
     private val financeRepository = RoomFinanceRepository(database)
+    private val budgetOverrunNotifier = BudgetOverrunNotifier(application, database.budgetGoalDao())
     private val repository = RoomTransactionRepository(
         database.transactionDao(),
         database.accountDao(),
@@ -193,6 +195,12 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                     notes = null
                 )
             )
+            if (type == "EXPENSE") {
+                budgetOverrunNotifier.refreshForExpense(
+                    categoryId, account.currencyCode, account.currencyExponent,
+                    occurredAtEpochMillis, language.value
+                )
+            }
         }
     }
 
@@ -247,12 +255,33 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             }.onFailure {
                 _financeActionMessage.value = localizeFinanceError(it.message.orEmpty())
             }.onSuccess {
+                if (original.transactionType == "EXPENSE") {
+                    budgetOverrunNotifier.refreshForExpense(
+                        original.categoryId, original.currencyCode, original.currencyExponent,
+                        original.occurredAtEpochMillis, language.value
+                    )
+                }
+                if (type == "EXPENSE") {
+                    budgetOverrunNotifier.refreshForExpense(
+                        categoryId, account.currencyCode, account.currencyExponent,
+                        occurredAtEpochMillis, language.value
+                    )
+                }
                 _financeActionMessage.value = if (language.value == "ar") "تم تحديث العملية المالية." else "Transaction updated."
             }
         }
     }
 
     fun deleteTransaction(id: String) {
-        viewModelScope.launch { repository.delete(id) }
+        viewModelScope.launch {
+            val previous = database.transactionDao().findById(id)
+            repository.delete(id)
+            if (previous?.transactionType == "EXPENSE") {
+                budgetOverrunNotifier.refreshForExpense(
+                    previous.categoryId, previous.currencyCode, previous.currencyExponent,
+                    previous.occurredAtEpochMillis, language.value
+                )
+            }
+        }
     }
 }
