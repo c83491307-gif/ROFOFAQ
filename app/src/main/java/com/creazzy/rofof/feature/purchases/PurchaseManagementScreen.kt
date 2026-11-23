@@ -162,7 +162,7 @@ fun PurchaseManagementScreen(
     }
     expenseAllocation?.let { allocationId ->
         PersonalExpenseDialog(
-            accounts = accounts.filter { !it.isArchived },
+            accounts = accounts.filter { !it.isArchived && it.currencyCode == session?.currencyCode && it.currencyExponent == session?.currencyExponent },
             categories = categories.filter { !it.isArchived && it.transactionType == "EXPENSE" },
             language = language,
             onDismiss = { expenseAllocation = null },
@@ -220,7 +220,7 @@ private fun PurchaseDetail(
         }
         item { Text(if (ar) "الأصناف والتوزيع" else "Items & allocations", style = MaterialTheme.typography.titleMedium) }
         items(items, key = { "i-${it.id}" }) { item ->
-            val allocated = allocations.filter { it.itemTitle == item.title }
+            val allocated = allocations.filter { it.itemId == item.id }
             Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Column(Modifier.fillMaxWidth().padding(12.dp)) {
                     Text(item.title, color = PurchaseInk, style = MaterialTheme.typography.titleSmall)
@@ -263,7 +263,7 @@ private fun PurchaseDetail(
             }
         }
         if (session.status == "OPEN") item {
-            Button(onClick = onClose, enabled = !busy && items.isNotEmpty() && items.all { item -> allocations.any { it.itemTitle == item.title } }) {
+            Button(onClick = onClose, enabled = !busy && items.isNotEmpty() && items.all { item -> allocations.any { it.itemId == item.id } }) {
                 Text(if (ar) "إغلاق بعد التسوية" else "Close as settled")
             }
         }
