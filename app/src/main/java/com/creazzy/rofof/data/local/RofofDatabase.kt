@@ -116,6 +116,21 @@ abstract class RofofDatabase : RoomDatabase() {
                 )
                 database.execSQL(
                     """
+                    INSERT OR IGNORE INTO accounts
+                    (id, name, currencyCode, currencyExponent, openingBalanceMinor, isArchived, createdAtEpochMillis)
+                    SELECT
+                        CASE
+                            WHEN currencyCode = 'EGP' AND currencyExponent = 2 THEN 'default-cash'
+                            ELSE 'legacy-cash-' || currencyCode || '-' || currencyExponent
+                        END,
+                        'Cash (' || currencyCode || ')',
+                        currencyCode, currencyExponent, 0, 0, 0
+                    FROM expenses
+                    GROUP BY currencyCode, currencyExponent
+                    """.trimIndent()
+                )
+                database.execSQL(
+                    """
                     INSERT OR IGNORE INTO categories
                     (id, name, transactionType, parentId, isArchived, createdAtEpochMillis)
                     VALUES ('default-expense-general', 'General', 'EXPENSE', NULL, 0, 0)
@@ -145,7 +160,10 @@ abstract class RofofDatabase : RoomDatabase() {
                     (id, title, transactionType, amountMinor, currencyCode, currencyExponent,
                      accountId, categoryId, occurredAtEpochMillis, createdAtEpochMillis, notes)
                     SELECT id, title, 'EXPENSE', amountMinor, currencyCode, currencyExponent,
-                           'default-cash',
+                           CASE
+                               WHEN currencyCode = 'EGP' AND currencyExponent = 2 THEN 'default-cash'
+                               ELSE 'legacy-cash-' || currencyCode || '-' || currencyExponent
+                           END,
                            CASE
                                WHEN trim(category) = '' THEN 'default-expense-general'
                                ELSE 'legacy-expense-' || lower(trim(category))
