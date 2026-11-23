@@ -9,6 +9,8 @@ class RoomPurchaseRepository(private val database: RofofDatabase) {
     private val dao = database.purchaseDao()
 
     fun observeSessions() = dao.observeSessions()
+    fun observeParticipants(sessionId: String) = dao.observeParticipants(sessionId)
+    fun observeItems(sessionId: String) = dao.observeItems(sessionId)
     fun observeSettlements(sessionId: String) = dao.observeSettlements(sessionId)
 
     suspend fun createSession(title: String, currencyCode: String, currencyExponent: Int, notes: String? = null): String {
