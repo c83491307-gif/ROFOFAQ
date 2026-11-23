@@ -153,12 +153,13 @@ class TransactionDaoTest {
         val repository = com.creazzy.rofof.data.repository.RoomTransactionRepository(
             database.transactionDao(), database.accountDao(), database.categoryDao()
         )
-        finance.createCategory("Salary", "INCOME")
+        val incomeCategoryId = finance.createCategory("Salary", "INCOME")
+        val expenseCategoryId = finance.createCategory("General", "EXPENSE")
         val wrongCurrency = runCatching {
             repository.add(
                 com.creazzy.rofof.domain.model.LedgerTransaction(
                     "bad-currency", "Wrong", "EXPENSE", 100L, "USD", 2,
-                    accountId, "default-expense-general", 1L, 1L, null
+                    accountId, expenseCategoryId, 1L, 1L, null
                 )
             )
         }
@@ -167,7 +168,7 @@ class TransactionDaoTest {
             repository.add(
                 com.creazzy.rofof.domain.model.LedgerTransaction(
                     "bad-category", "Wrong", "EXPENSE", 100L, "EGP", 2,
-                    accountId, "default-income-general", 1L, 1L, null
+                    accountId, incomeCategoryId, 1L, 1L, null
                 )
             )
         }
