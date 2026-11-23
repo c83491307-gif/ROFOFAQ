@@ -15,9 +15,9 @@ This plan is derived from the repository's original `main/README.md` roadmap. It
 | README area | Applied Android implementation plan | Status |
 |---|---|---|
 | Quick transaction | Create/read/update/delete dated income and expense transactions with amount and category | Partial: add/read/delete expense exists; income/edit/date picker pending |
-| Multiple accounts | Cash, card, savings and custom accounts with independent balances | Pending |
-| Categories/subcategories | Local editable two-level category tree | Pending |
-| Transfers | Atomic account-to-account transfer, excluded from income/expense totals | Pending |
+| Multiple accounts | Cash, card, savings and custom accounts with independent balances | Implemented: create local accounts, opening balances, selected-account transactions and live per-account balance projection |
+| Categories/subcategories | Local editable two-level category tree | Implemented: income/expense categories and two-level create flow; rename/archive UI pending |
+| Transfers | Atomic account-to-account transfer, excluded from income/expense totals | Implemented: same-currency transfer table, transactional insert, paired balance impact and currency mismatch rejection |
 | Recurring/templates | Rules create reviewable drafts; no silent posting | Pending |
 | Splits | Exact minor-unit split with deterministic visible remainder | Pending |
 | Receipt images | User-selected local attachments, optional | Pending |
