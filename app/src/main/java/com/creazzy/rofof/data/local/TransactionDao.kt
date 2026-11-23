@@ -27,6 +27,9 @@ interface TransactionDao {
     """)
     fun observeTotals(currencyCode: String, currencyExponent: Int): Flow<TransactionTotals>
 
+    @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
+    suspend fun findById(id: String): TransactionEntity?
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(transaction: TransactionEntity)
 
