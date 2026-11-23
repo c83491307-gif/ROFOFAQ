@@ -3,9 +3,10 @@ package com.creazzy.rofof.feature.dashboard
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.creazzy.rofof.data.local.ExpenseEntity
+import com.creazzy.rofof.data.local.LocalPreferenceEntity
 import com.creazzy.rofof.data.local.RofofDatabase
 import com.creazzy.rofof.data.repository.RoomExpenseRepository
+import com.creazzy.rofof.domain.model.Expense
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -29,7 +30,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         if (value != "ar" && value != "en") return
         viewModelScope.launch {
             database.localPreferenceDao().put(
-                com.creazzy.rofof.data.local.LocalPreferenceEntity(
+                LocalPreferenceEntity(
                     key = "language",
                     value = value,
                     updatedAtEpochMillis = System.currentTimeMillis()
@@ -52,7 +53,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             repository.add(
-                ExpenseEntity(
+                Expense(
                     id = UUID.randomUUID().toString(),
                     title = cleanTitle,
                     amountMinor = minorUnits,
