@@ -100,4 +100,36 @@ class FinanceManagementRepositoryTest {
         assertTrue(runCatching { finance.archiveCategory(categoryId) }.isFailure)
         assertFalse(database.categoryDao().findById(categoryId)!!.isArchived)
     }
+
+    @Test fun transactionCanBeEditedAcrossTypeAmountAndDateWithoutChangingItsIdentity() = runBlocking {
+        val accountId = finance.createAccount("Daily", "EGP", 2, 0L)
+        val expenseCategory = finance.createCategory("Food", "EXPENSE")
+        val incomeCategory = finance.createCategory("Salary", "INCOME")
+        val transactions = RoomTransactionRepository(database.transactionDao(), database.accountDao(), database.categoryDao())
+        val original = LedgerTransaction(
+            "editable-transaction", "Lunch", "EXPENSE", 1500L, "EGP", 2,
+            accountId, expenseCategory, 1000L, 1000L, "note"
+        )
+        transactions.add(original)
+
+        transactions.update(
+            original.copy(
+                title = "Monthly salary",
+                transactionType = "INCOME",
+                amountMinor = 250000L,
+                categoryId = incomeCategory,
+                occurredAtEpochMillis = 2000L
+            )
+        )
+
+        val updated = transactions.observeRecent().first().single()
+        assertEquals("editable-transaction", updated.id)
+        assertEquals("Monthly salary", updated.title)
+        assertEquals("INCOME", updated.transactionType)
+        assertEquals(250000L, updated.amountMinor)
+        assertEquals(incomeCategory, updated.categoryId)
+        assertEquals(2000L, updated.occurredAtEpochMillis)
+        assertEquals("note", updated.notes)
+    }
+
 }
