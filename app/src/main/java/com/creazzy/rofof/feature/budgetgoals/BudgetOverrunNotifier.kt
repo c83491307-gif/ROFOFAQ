@@ -41,7 +41,7 @@ class BudgetOverrunNotifier(
         )
 
         snapshots.forEach { budget ->
-            val stateKey = "\${budget.id}:\${budget.periodStartEpochMillis}"
+            val stateKey = "${budget.id}:${budget.periodStartEpochMillis}"
             val alreadyNotified = preferences.getBoolean(stateKey, false)
 
             if (BudgetOverrunPolicy.shouldRearm(budget.spentMinor, budget.amountMinor)) {
