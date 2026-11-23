@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, c83491307-gif-patch-1, "feat/rofof-**"]
   pull_request:
-    branches: [main, c83491307-gif-patch-1]
+    branches: [main, c83491307-gif-patch-1, feat/rofof-phase0-discovery]
 
 permissions:
   contents: read
