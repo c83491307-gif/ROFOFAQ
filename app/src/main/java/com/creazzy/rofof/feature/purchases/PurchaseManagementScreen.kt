@@ -37,6 +37,7 @@ import com.creazzy.rofof.data.local.PurchaseItemEntity
 import com.creazzy.rofof.data.local.PurchaseSessionEntity
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.util.UUID
 
 private val PurchaseGreen = Color(0xFF147D64)
 private val PurchaseInk = Color(0xFF172B2A)
@@ -152,12 +153,14 @@ fun PurchaseManagementScreen(
             onConfirm = { shares -> viewModel.allocate(item.id, shares); allocateItem = null })
     }
     paymentParticipant?.let { participantId ->
-        SimpleEntryDialog(
-            title = if (ar) "تسجيل دفعة فعلية" else "Record actual payment",
-            label = if (ar) "المبلغ" else "Amount",
-            confirm = if (ar) "تسجيل" else "Record",
+        PaymentEntryDialog(
+            language = language,
+            busy = busy,
             onDismiss = { paymentParticipant = null },
-            onConfirm = { viewModel.recordPayment(participantId, it, "CASH"); paymentParticipant = null }
+            onConfirm = { amount, key ->
+                viewModel.recordPayment(participantId, amount, "CASH", key)
+                paymentParticipant = null
+            }
         )
     }
     expenseAllocation?.let { allocationId ->
@@ -282,6 +285,41 @@ private fun SimpleEntryDialog(
         text = { OutlinedTextField(value, { value = it }, label = { Text(label) }, singleLine = true) },
         confirmButton = { Button(onClick = { onConfirm(value) }, enabled = value.isNotBlank()) { Text(confirm) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+
+@Composable
+private fun PaymentEntryDialog(
+    language: String,
+    busy: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String) -> Unit
+) {
+    val ar = language == "ar"
+    val idempotencyKey = remember { UUID.randomUUID().toString() }
+    var amount by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (ar) "تسجيل دفعة فعلية" else "Record actual payment") },
+        text = {
+            OutlinedTextField(
+                amount, { amount = it },
+                label = { Text(if (ar) "المبلغ" else "Amount") },
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(amount, idempotencyKey) },
+                enabled = amount.isNotBlank() && !busy
+            ) { Text(if (ar) "تسجيل" else "Record") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !busy) {
+                Text(if (ar) "إلغاء" else "Cancel")
+            }
+        }
     )
 }
 
