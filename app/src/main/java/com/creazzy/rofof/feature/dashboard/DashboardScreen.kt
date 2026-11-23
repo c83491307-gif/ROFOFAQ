@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.creazzy.rofof.data.local.ExpenseEntity
+import com.creazzy.rofof.domain.model.Expense
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -169,7 +169,7 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
 
 @Composable
 private fun ExpenseRow(
-    expense: ExpenseEntity,
+    expense: Expense,
     language: String,
     deleteLabel: String,
     onDelete: () -> Unit
