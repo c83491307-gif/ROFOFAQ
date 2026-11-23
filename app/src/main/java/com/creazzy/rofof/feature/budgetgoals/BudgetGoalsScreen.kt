@@ -24,6 +24,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -66,6 +76,19 @@ fun BudgetGoalsScreen(
     val error by model.error.collectAsState()
     val busy by model.busy.collectAsState()
     val ar = language == "ar"
+    val context = LocalContext.current
+    var notificationsEnabled by remember {
+        mutableStateOf(
+            NotificationManagerCompat.from(context).areNotificationsEnabled() &&
+                (Build.VERSION.SDK_INT < 33 ||
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+        )
+    }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        notificationsEnabled = granted && NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
     var showBudget by remember { mutableStateOf(false) }
     var editingBudget by remember { mutableStateOf<BudgetProgress?>(null) }
     var showGoal by remember { mutableStateOf(false) }
@@ -89,6 +112,30 @@ fun BudgetGoalsScreen(
                     }
                     Button(onClick = { showGoal = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = PlanInk)) {
                         Text(if (ar) "＋ هدف مالي" else "＋ Goal")
+                    }
+                }
+                if (notificationsEnabled) {
+                    Text(
+                        if (ar) "✓ تنبيهات تجاوز الميزانية مفعّلة" else "✓ Budget overrun alerts are enabled",
+                        color = PlanGreen,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                } else {
+                    TextButton(
+                        onClick = {
+                            val permissionMissing = Build.VERSION.SDK_INT >= 33 &&
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                            if (permissionMissing) {
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                context.startActivity(
+                                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                )
+                            }
+                        }
+                    ) {
+                        Text(if (ar) "تفعيل إشعارات تجاوز الميزانية" else "Enable budget alerts")
                     }
                 }
                 Spacer(Modifier.height(12.dp))
