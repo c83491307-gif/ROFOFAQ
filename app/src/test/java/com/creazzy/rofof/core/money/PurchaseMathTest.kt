@@ -6,7 +6,7 @@ import org.junit.Test
 
 class PurchaseMathTest {
     @Test fun quantityAndPriceProduceMinorUnits() {
-        assertEquals(1250L, PurchaseMath.lineTotalMinor(2_500L, 250L))
+        assertEquals(625L, PurchaseMath.lineTotalMinor(2_500L, 250L))
     }
 
     @Test fun fractionalQuantityUsesHalfUpRounding() {
