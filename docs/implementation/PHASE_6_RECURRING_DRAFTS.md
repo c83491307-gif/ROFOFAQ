@@ -18,4 +18,7 @@ Adds local monthly expense templates and a user-triggered due-occurrence generat
 - Custom cadence, editing/pausing, draft approval/posting, income rules, and notifications remain follow-up work.
 
 ## Verification
-CI must run Room/Robolectric unit tests, lint and debug APK assembly on the exact commit. A version-6→7 migration test and recurrence boundary tests remain required before this migration is considered fully verified.
+- Robolectric Room tests cover rule/draft persistence, unique occurrence enforcement, draft-only behavior (no ledger transaction is created), and guarded draft status transitions.
+- The existing Room schema assertion now verifies version 7 and the new tables.
+- CI must run unit/Robolectric tests, lint and debug APK assembly on the exact commit.
+- A real on-disk version-6→7 upgrade-path test and automated recurrence boundary/catch-up tests remain required before migration and scheduler behavior are considered fully verified.

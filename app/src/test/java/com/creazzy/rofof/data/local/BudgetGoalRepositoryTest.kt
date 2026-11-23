@@ -93,17 +93,17 @@ class BudgetGoalRepositoryTest {
         assertTrue(runCatching { plans.updateGoalProgress(id, -1L) }.isFailure)
     }
 
-    @Test fun schemaVersionSixCreatesBudgetAndGoalTables() = runBlocking {
+    @Test fun schemaVersionSevenCreatesBudgetGoalAndRecurringTables() = runBlocking {
         val tables = database.openHelper.readableDatabase.query(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('budgets', 'financial_goals') ORDER BY name"
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('budgets', 'financial_goals', 'recurring_drafts', 'recurring_rules') ORDER BY name"
         ).use { cursor ->
             buildList { while (cursor.moveToNext()) add(cursor.getString(0)) }
         }
-        assertEquals(listOf("budgets", "financial_goals"), tables)
+        assertEquals(listOf("budgets", "financial_goals", "recurring_drafts", "recurring_rules"), tables)
         val version = database.openHelper.readableDatabase.query("PRAGMA user_version").use { cursor ->
             cursor.moveToFirst()
             cursor.getInt(0)
         }
-        assertEquals(6, version)
+        assertEquals(7, version)
     }
 }
