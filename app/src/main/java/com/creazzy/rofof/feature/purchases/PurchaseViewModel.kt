@@ -32,6 +32,8 @@ class PurchaseViewModel(application: Application) : AndroidViewModel(application
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val settlements = selectedId.filterNotNull().flatMapLatest { repository.observeSettlements(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val allocationViews = selectedId.filterNotNull().flatMapLatest { database.purchaseDao().observeAllocationViews(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val accounts = database.accountDao().observeBalances()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val categories = database.categoryDao().observeActive()
