@@ -27,6 +27,9 @@ interface TransactionDao {
     """)
     fun observeTotals(currencyCode: String, currencyExponent: Int): Flow<TransactionTotals>
 
+    @Query("SELECT * FROM transactions ORDER BY occurredAtEpochMillis ASC, id ASC")
+    suspend fun getAllForExport(): List<TransactionEntity>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(transaction: TransactionEntity)
 
