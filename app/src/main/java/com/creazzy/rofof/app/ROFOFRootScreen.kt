@@ -22,6 +22,7 @@ import com.creazzy.rofof.feature.dashboard.DashboardScreen
 import com.creazzy.rofof.feature.purchases.PurchaseManagementScreen
 import com.creazzy.rofof.feature.budgetgoals.BudgetGoalsScreen
 import com.creazzy.rofof.feature.recurring.RecurringManagementScreen
+import com.creazzy.rofof.feature.analytics.AnalyticsScreen
 
 @Composable
 fun ROFOFRootScreen() {
@@ -43,13 +44,17 @@ fun ROFOFRootScreen() {
             TextButton(onClick = { destination = "recurring" }) {
                 Text("المتكرر · Recurring", color = if (destination == "recurring") Color(0xFF147D64) else MaterialTheme.colorScheme.onSurface)
             }
+            TextButton(onClick = { destination = "analytics" }) {
+                Text("التقارير · Reports", color = if (destination == "analytics") Color(0xFF147D64) else MaterialTheme.colorScheme.onSurface)
+            }
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when (destination) {
                 "dashboard" -> DashboardScreen()
                 "purchases" -> PurchaseManagementScreen(onBack = { destination = "dashboard" })
                 "budgetgoals" -> BudgetGoalsScreen(onBack = { destination = "dashboard" })
-                else -> RecurringManagementScreen(onBack = { destination = "dashboard" })
+                "recurring" -> RecurringManagementScreen(onBack = { destination = "dashboard" })
+                else -> AnalyticsScreen(onBack = { destination = "dashboard" })
             }
         }
     }

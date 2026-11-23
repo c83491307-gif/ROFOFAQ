@@ -67,7 +67,8 @@ gradle connectedDebugAndroidTest
 - [x] Shared purchase sessions, participants, item-level exact allocations, actual payments, settlement balances and explicit personal-expense source links (see Phase 4 verification report).
 - [x] Monthly category budgets and manually maintained savings goals (Phase 5).
 - [x] Monthly recurring expense rules and reviewable draft generation (Phase 6; drafts are not auto-posted).
-- [ ] Reports, cash-flow and forecasts.
+- [x] Initial EGP monthly category-spend report and title/notes transaction search (Phase 7).
+- [ ] Cash-flow forecasting and expanded multi-currency reports.
 - [ ] Search, CSV import/export, validated backup/restore and app security.
 - [ ] Optional OCR and future web/sync extensions.
 
