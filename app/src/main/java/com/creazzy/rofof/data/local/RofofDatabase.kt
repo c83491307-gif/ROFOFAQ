@@ -152,7 +152,7 @@ abstract class RofofDatabase : RoomDatabase() {
                     SELECT 'legacy-expense-' || lower(trim(category)), trim(category),
                            'EXPENSE', NULL, 0, 0
                     FROM expenses
-                    WHERE trim(category) <> ''
+                    WHERE trim(category) <> '' AND lower(trim(category)) <> 'general'
                     GROUP BY lower(trim(category))
                     """.trimIndent()
                 )
@@ -167,7 +167,8 @@ abstract class RofofDatabase : RoomDatabase() {
                                ELSE 'legacy-cash-' || currencyCode || '-' || currencyExponent
                            END,
                            CASE
-                               WHEN trim(category) = '' THEN 'default-expense-general'
+                               WHEN trim(category) = '' OR lower(trim(category)) = 'general'
+                                   THEN 'default-expense-general'
                                ELSE 'legacy-expense-' || lower(trim(category))
                            END,
                            occurredAtEpochMillis, createdAtEpochMillis, NULL
