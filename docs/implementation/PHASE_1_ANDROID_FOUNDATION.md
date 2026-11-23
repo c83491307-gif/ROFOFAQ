@@ -21,7 +21,7 @@ This branch is based on the Phase 0 discovery commit and retains the discovery r
 
 ## Verification status
 
-No successful build or test result is claimed in this report. GitHub Actions runs were observed to be cancelled while rapid sequential commits were still being pushed. A final run must complete against the final branch head before this phase can be considered verified.
+No successful build or test result is claimed in this report. The first final-head run reached SDK setup and exposed an obsolete Android setup action version that requested the removed SDK package `tools`. The workflow has been updated to `android-actions/setup-android@v4`, whose current configuration no longer requests that package. A new final-head run must complete before this phase can be considered verified.
 
 Required checks:
 1. `testDebugUnitTest`
