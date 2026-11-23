@@ -37,6 +37,6 @@ The branch CI must pass on its exact latest commit:
 1. JVM unit tests, including line-total rounding, overflow and allocation exactness.
 2. Android lint.
 3. Debug APK assembly.
-4. Robolectric Room tests for participant balances, exact allocation, payment idempotency, settlement gating and explicit personal-expense linking.
+4. Emulator-backed Room tests for participant balances, exact allocation, payment idempotency, settlement gating and explicit personal-expense linking.
 
-A Robolectric upgrade-path test creates a physical SQLite file at user_version 4 with legacy tables, indexes and representative rows, then opens it through Room with MIGRATION_4_5. Room's generated schema validator and explicit assertions verify v5 tables/indexes, preserved legacy rows, foreign-key declarations, no foreign-key violations and unique-index enforcement. No merge, release APK or deployment is claimed until verification evidence is available.
+The v4 → v5 migration also requires an upgrade-path test against a real v4 database before this phase can be considered complete. No merge, release APK or deployment is claimed until verification evidence is available.

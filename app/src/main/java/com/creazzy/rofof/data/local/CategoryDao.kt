@@ -11,6 +11,9 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE isArchived = 0 ORDER BY name COLLATE NOCASE")
     fun observeActive(): Flow<List<CategoryEntity>>
 
+    @Query("SELECT * FROM categories ORDER BY isArchived, name COLLATE NOCASE")
+    fun observeAll(): Flow<List<CategoryEntity>>
+
     @Query("SELECT * FROM categories WHERE id = :id LIMIT 1")
     suspend fun findById(id: String): CategoryEntity?
 

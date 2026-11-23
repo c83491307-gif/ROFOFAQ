@@ -33,6 +33,22 @@ interface AccountDao {
     """)
     fun observeBalances(): Flow<List<AccountBalance>>
 
+    @Query("""
+        SELECT accounts.*,
+            accounts.openingBalanceMinor
+            + COALESCE((
+                SELECT SUM(CASE WHEN transactions.transactionType = 'INCOME' THEN transactions.amountMinor
+                    WHEN transactions.transactionType = 'EXPENSE' THEN -transactions.amountMinor ELSE 0 END)
+                FROM transactions WHERE transactions.accountId = accounts.id
+            ), 0)
+            + COALESCE((SELECT SUM(transfers.amountMinor) FROM transfers WHERE transfers.toAccountId = accounts.id), 0)
+            - COALESCE((SELECT SUM(transfers.amountMinor) FROM transfers WHERE transfers.fromAccountId = accounts.id), 0)
+            AS balanceMinor
+        FROM accounts
+        ORDER BY accounts.isArchived, accounts.name COLLATE NOCASE
+    """)
+    fun observeAllBalances(): Flow<List<AccountBalance>>
+
     @Query("SELECT * FROM accounts WHERE id = :id LIMIT 1")
     suspend fun findById(id: String): AccountEntity?
 

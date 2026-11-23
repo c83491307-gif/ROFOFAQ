@@ -62,6 +62,8 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     val transactions by expenseViewModel.transactions.collectAsState()
     val categories by expenseViewModel.categories.collectAsState()
     val accounts by expenseViewModel.accounts.collectAsState()
+    val managedAccounts by expenseViewModel.managedAccounts.collectAsState()
+    val managedCategories by expenseViewModel.managedCategories.collectAsState()
     val totals by expenseViewModel.totals.collectAsState()
     val language by expenseViewModel.language.collectAsState()
     val isArabic = language == "ar"
@@ -188,9 +190,11 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
 
     if (showAccounts) {
         AccountManagerDialog(
-            accounts = accounts,
+            accounts = managedAccounts,
             language = language,
             onCreate = expenseViewModel::createAccount,
+            onRename = expenseViewModel::renameAccount,
+            onArchive = expenseViewModel::archiveAccount,
             onDismiss = { showAccounts = false }
         )
     }
@@ -207,9 +211,11 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     }
     if (showCategories) {
         CategoryManagerDialog(
-            categories = categories,
+            categories = managedCategories,
             language = language,
             onCreate = expenseViewModel::createCategory,
+            onRename = expenseViewModel::renameCategory,
+            onArchive = expenseViewModel::archiveCategory,
             onDismiss = { showCategories = false }
         )
     }

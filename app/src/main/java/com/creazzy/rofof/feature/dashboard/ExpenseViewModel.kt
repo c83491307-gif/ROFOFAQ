@@ -32,7 +32,13 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val categories = database.categoryDao().observeActive()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val managedCategories = financeRepository.observeCategoriesForManagement()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     val accounts = financeRepository.observeAccounts()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val managedAccounts = financeRepository.observeAccountsForManagement()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val transfers = financeRepository.observeTransfers()

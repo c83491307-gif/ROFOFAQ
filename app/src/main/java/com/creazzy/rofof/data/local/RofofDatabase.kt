@@ -212,7 +212,7 @@ abstract class RofofDatabase : RoomDatabase() {
         }
 
 
-        internal val MIGRATION_4_5 = object : Migration(4, 5) {
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("""CREATE TABLE IF NOT EXISTS purchase_sessions (
                     id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, notes TEXT,

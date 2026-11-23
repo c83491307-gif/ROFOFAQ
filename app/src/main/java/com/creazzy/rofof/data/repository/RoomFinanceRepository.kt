@@ -19,7 +19,9 @@ class RoomFinanceRepository(
     private val transferDao: TransferDao = database.transferDao()
 ) {
     fun observeAccounts() = accountDao.observeBalances()
+    fun observeAccountsForManagement() = accountDao.observeAllBalances()
     fun observeCategories() = categoryDao.observeActive()
+    fun observeCategoriesForManagement() = categoryDao.observeAll()
     fun observeTransfers(): Flow<List<TransferEntity>> = transferDao.observeRecent()
 
     suspend fun createAccount(
