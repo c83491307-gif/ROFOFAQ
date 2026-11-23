@@ -21,6 +21,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -75,6 +78,7 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     var showTransfer by remember { mutableStateOf(false) }
     var showCategories by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<LedgerTransaction?>(null) }
+    var pendingEdit by remember { mutableStateOf<LedgerTransaction?>(null) }
 
     val income = totals.incomeMinor
     val expenses = totals.expenseMinor
@@ -179,6 +183,8 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
                                 categoryName = categoryNames[transaction.categoryId] ?: words.general,
                                 language = language,
                                 deleteLabel = words.delete,
+                                editLabel = words.edit,
+                                onEdit = { pendingEdit = transaction },
                                 onDelete = { pendingDelete = transaction }
                             )
                         }
@@ -224,11 +230,27 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     if (showAdd) {
         AddTransactionDialog(
             words = words,
-            onDismiss = { showAdd = false },
+            language = language,
             accounts = accounts,
-            onSave = { title, amount, category, type, accountId ->
-                expenseViewModel.addTransaction(title, amount, category, type, accountId)
+            onDismiss = { showAdd = false },
+            onSave = { title, amount, category, type, accountId, occurredAt ->
+                expenseViewModel.addTransaction(title, amount, category, type, accountId, occurredAt)
                 showAdd = false
+            }
+        )
+    }
+
+    pendingEdit?.let { transaction ->
+        AddTransactionDialog(
+            words = words,
+            language = language,
+            accounts = accounts,
+            initialTransaction = transaction,
+            initialCategoryName = categoryNames[transaction.categoryId] ?: words.general,
+            onDismiss = { pendingEdit = null },
+            onSave = { title, amount, category, type, accountId, occurredAt ->
+                expenseViewModel.updateTransaction(transaction, title, amount, category, type, accountId, occurredAt)
+                pendingEdit = null
             }
         )
     }
@@ -286,6 +308,8 @@ private fun TransactionRow(
     categoryName: String,
     language: String,
     deleteLabel: String,
+    editLabel: String,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val isIncome = transaction.transactionType == "INCOME"
@@ -319,8 +343,13 @@ private fun TransactionRow(
                     color = if (isIncome) Green else Red,
                     fontWeight = FontWeight.Bold
                 )
-                TextButton(onClick = onDelete, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-                    Text(deleteLabel, color = Red, style = MaterialTheme.typography.labelSmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = onEdit, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                        Text(editLabel, color = Green, style = MaterialTheme.typography.labelSmall)
+                    }
+                    TextButton(onClick = onDelete, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                        Text(deleteLabel, color = Red, style = MaterialTheme.typography.labelSmall)
+                    }
                 }
             }
         }
@@ -330,19 +359,26 @@ private fun TransactionRow(
 @Composable
 private fun AddTransactionDialog(
     words: Words,
+    language: String,
     accounts: List<com.creazzy.rofof.data.local.AccountBalance>,
     onDismiss: () -> Unit,
-    onSave: (String, String, String, String, String) -> Unit
+    onSave: (String, String, String, String, String, Long) -> Unit,
+    initialTransaction: LedgerTransaction? = null,
+    initialCategoryName: String = ""
 ) {
-    var title by remember { mutableStateOf("") }
-    var amount by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("EXPENSE") }
-    var accountId by remember(accounts) { mutableStateOf(accounts.firstOrNull()?.id.orEmpty()) }
+    var title by remember(initialTransaction?.id) { mutableStateOf(initialTransaction?.title.orEmpty()) }
+    var amount by remember(initialTransaction?.id) {
+        mutableStateOf(initialTransaction?.let { BigDecimal.valueOf(it.amountMinor, it.currencyExponent).toPlainString() }.orEmpty())
+    }
+    var category by remember(initialTransaction?.id) { mutableStateOf(initialCategoryName) }
+    var type by remember(initialTransaction?.id) { mutableStateOf(initialTransaction?.transactionType ?: "EXPENSE") }
+    var accountId by remember(accounts, initialTransaction?.id) { mutableStateOf(initialTransaction?.accountId ?: accounts.firstOrNull()?.id.orEmpty()) }
     var accountMenu by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialTransaction?.occurredAtEpochMillis ?: System.currentTimeMillis())
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(words.newTransaction, color = Ink, fontWeight = FontWeight.Bold) },
+        title = { Text(if (initialTransaction == null) words.newTransaction else words.edit, color = Ink, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -366,6 +402,9 @@ private fun AddTransactionDialog(
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(words.transactionName) }, singleLine = true)
                 OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text(words.amount) }, supportingText = { Text(words.amountHint) }, singleLine = true)
                 OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text(words.category) }, singleLine = true)
+                TextButton(onClick = { showDatePicker = true }) {
+                    Text("${words.transactionDate}: ${dateLabel(datePickerState.selectedDateMillis ?: System.currentTimeMillis(), language)}")
+                }
                 TextButton(onClick = { accountMenu = true }) {
                     val selected = accounts.firstOrNull { it.id == accountId }
                     Text(if (selected == null) words.chooseAccount else selected.name + " · " + selected.currencyCode)
@@ -382,7 +421,7 @@ private fun AddTransactionDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onSave(title, amount, category, type, accountId) },
+                onClick = { onSave(title, amount, category, type, accountId, datePickerState.selectedDateMillis ?: System.currentTimeMillis()) },
                 enabled = title.isNotBlank() && amount.isNotBlank() && accountId.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = Green)
             ) { Text(words.save) }
@@ -390,6 +429,19 @@ private fun AddTransactionDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text(words.cancel) } },
         containerColor = Color.White
     )
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text(words.save) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text(words.cancel) }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }
 
 private fun formatEgp(minor: Long, language: String): String =
@@ -428,7 +480,9 @@ private data class Words(
     val delete: String,
     val confirmDelete: String,
     val confirmDeleteBody: String,
-    val chooseAccount: String
+    val chooseAccount: String,
+    val edit: String,
+    val transactionDate: String
 )
 
 private val Arabic = Words(
@@ -437,7 +491,7 @@ private val Arabic = Words(
     "أضف أول دخل أو مصروف ليظهر هنا", "عملية مالية جديدة", "اسم العملية",
     "المبلغ بالجنيه", "مثال: 125.50", "التصنيف", "عام", "حفظ العملية",
     "إلغاء", "حذف", "تأكيد الحذف",
-    "سيتم حذف هذه العملية نهائيًا من سجل الجهاز.", "اختر الحساب"
+    "سيتم حذف هذه العملية نهائيًا من سجل الجهاز.", "اختر الحساب", "تعديل العملية", "تاريخ العملية"
 )
 private val English = Words(
     "Good evening", "Net balance (EGP)", "Income (EGP)", "Expenses (EGP)", "Recent transactions",
@@ -445,5 +499,5 @@ private val English = Words(
     "Add your first income or expense", "New transaction", "Transaction name",
     "Amount in EGP", "Example: 125.50", "Category", "General", "Save transaction",
     "Cancel", "Delete", "Confirm deletion",
-    "This transaction will be permanently deleted from this device.", "Choose account"
+    "This transaction will be permanently deleted from this device.", "Choose account", "Edit transaction", "Transaction date"
 )
