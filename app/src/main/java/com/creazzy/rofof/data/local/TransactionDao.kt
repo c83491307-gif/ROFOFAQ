@@ -17,6 +17,15 @@ interface TransactionDao {
     @Query("SELECT COALESCE(SUM(amountMinor), 0) FROM transactions WHERE transactionType = 'EXPENSE' AND currencyCode = :currencyCode AND occurredAtEpochMillis >= :fromEpochMillis")
     fun observeExpensesSince(fromEpochMillis: Long, currencyCode: String): Flow<Long>
 
+    @Query("""
+        SELECT
+            COALESCE(SUM(CASE WHEN transactionType = 'INCOME' THEN amountMinor ELSE 0 END), 0) AS incomeMinor,
+            COALESCE(SUM(CASE WHEN transactionType = 'EXPENSE' THEN amountMinor ELSE 0 END), 0) AS expenseMinor
+        FROM transactions
+        WHERE currencyCode = :currencyCode AND currencyExponent = :currencyExponent
+    """)
+    fun observeTotals(currencyCode: String, currencyExponent: Int): Flow<TransactionTotals>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(transaction: TransactionEntity)
 
