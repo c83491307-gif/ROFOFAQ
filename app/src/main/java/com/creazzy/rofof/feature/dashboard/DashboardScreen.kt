@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.creazzy.rofof.domain.model.Expense
+import com.creazzy.rofof.domain.model.LedgerTransaction
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -56,15 +56,25 @@ private val Ink = Color(0xFF172B2A)
 private val Muted = Color(0xFF71817D)
 private val Canvas = Color(0xFFF4F7F5)
 private val Green = Color(0xFF147D64)
+private val Red = Color(0xFFB45B52)
 
 @Composable
 fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
-    val expenses by expenseViewModel.expenses.collectAsState()
+    val transactions by expenseViewModel.transactions.collectAsState()
+    val categories by expenseViewModel.categories.collectAsState()
     val language by expenseViewModel.language.collectAsState()
     val isArabic = language == "ar"
     val direction = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
     val words = if (isArabic) Arabic else English
     var showAdd by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<LedgerTransaction?>(null) }
+
+    val income = transactions.asSequence().filter { it.transactionType == "INCOME" }
+        .fold(0L) { total, item -> Math.addExact(total, item.amountMinor) }
+    val expenses = transactions.asSequence().filter { it.transactionType == "EXPENSE" }
+        .fold(0L) { total, item -> Math.addExact(total, item.amountMinor) }
+    val net = Math.subtractExact(income, expenses)
+    val categoryNames = categories.associate { it.id to it.name }
 
     androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides direction) {
         Surface(color = Canvas, modifier = Modifier.fillMaxSize()) {
@@ -85,30 +95,30 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
                     ) { Text(if (isArabic) "EN  ·  LTR" else "عربي  ·  RTL") }
                 }
 
-                Spacer(Modifier.height(22.dp))
-                val total = expenses.fold(0L) { accumulated, expense -> Math.addExact(accumulated, expense.amountMinor) }
+                Spacer(Modifier.height(20.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(28.dp),
+                    shape = RoundedCornerShape(26.dp),
                     colors = CardDefaults.cardColors(containerColor = Ink)
                 ) {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(Brush.linearGradient(listOf(Color(0xFF183C36), Color(0xFF126B57))))
-                            .padding(22.dp)
+                            .padding(20.dp)
                     ) {
-                        Column {
-                            Text(words.totalExpenses, color = Color(0xFFB9D6CC), style = MaterialTheme.typography.titleSmall)
-                            Spacer(Modifier.height(10.dp))
-                            Text(formatEgp(total, language), color = Color.White, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.height(8.dp))
-                            Text(words.localData, color = Color(0xFFD0E5DE), style = MaterialTheme.typography.bodySmall)
+                        Text(words.netBalance, color = Color(0xFFB9D6CC), style = MaterialTheme.typography.titleSmall)
+                        Spacer(Modifier.height(8.dp))
+                        Text(formatEgp(net, language), color = Color.White, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(18.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            BalanceMetric(words.income, income, Green, language, Modifier.weight(1f))
+                            BalanceMetric(words.expenses, expenses, Red, language, Modifier.weight(1f))
                         }
                     }
                 }
 
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(20.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -116,18 +126,18 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
                 ) {
                     Column {
                         Text(words.recent, color = Ink, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text(words.savedEntries(expenses.size), color = Muted, style = MaterialTheme.typography.bodySmall)
+                        Text(words.savedEntries(transactions.size), color = Muted, style = MaterialTheme.typography.bodySmall)
                     }
                     Button(
                         onClick = { showAdd = true },
                         shape = RoundedCornerShape(15.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Green)
-                    ) { Text(words.addExpense) }
+                    ) { Text(words.addTransaction) }
                 }
 
                 Spacer(Modifier.height(12.dp))
-                if (expenses.isEmpty()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                if (transactions.isEmpty()) {
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Box(
                                 modifier = Modifier.size(66.dp).background(Color.White, CircleShape),
@@ -143,10 +153,14 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.weight(1f)
                     ) {
-                        items(expenses, key = { it.id }) { expense ->
-                            ExpenseRow(expense, language, words.delete) {
-                                expenseViewModel.deleteExpense(expense.id)
-                            }
+                        items(transactions, key = { it.id }) { transaction ->
+                            TransactionRow(
+                                transaction = transaction,
+                                categoryName = categoryNames[transaction.categoryId] ?: words.general,
+                                language = language,
+                                deleteLabel = words.delete,
+                                onDelete = { pendingDelete = transaction }
+                            )
                         }
                         item { Spacer(Modifier.height(18.dp)) }
                     }
@@ -156,50 +170,88 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     }
 
     if (showAdd) {
-        AddExpenseDialog(
+        AddTransactionDialog(
             words = words,
             onDismiss = { showAdd = false },
-            onSave = { title, amount, category ->
-                expenseViewModel.addExpense(title, amount, category)
+            onSave = { title, amount, category, type ->
+                expenseViewModel.addTransaction(title, amount, category, type)
                 showAdd = false
             }
+        )
+    }
+
+    pendingDelete?.let { transaction ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text(words.confirmDelete, color = Ink, fontWeight = FontWeight.Bold) },
+            text = { Text(words.confirmDeleteBody) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        expenseViewModel.deleteTransaction(transaction.id)
+                        pendingDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Red)
+                ) { Text(words.delete) }
+            },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(words.cancel) } },
+            containerColor = Color.White
         )
     }
 }
 
 @Composable
-private fun ExpenseRow(
-    expense: Expense,
+private fun BalanceMetric(label: String, amount: Long, color: Color, language: String, modifier: Modifier) {
+    Column(
+        modifier = modifier
+            .background(Color.White.copy(alpha = 0.10f), RoundedCornerShape(16.dp))
+            .padding(12.dp)
+    ) {
+        Text(label, color = Color(0xFFD0E5DE), style = MaterialTheme.typography.labelMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(formatEgp(amount, language), color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1)
+    }
+}
+
+@Composable
+private fun TransactionRow(
+    transaction: LedgerTransaction,
+    categoryName: String,
     language: String,
     deleteLabel: String,
     onDelete: () -> Unit
 ) {
+    val isIncome = transaction.transactionType == "INCOME"
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 14.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier.size(44.dp).background(Color(0xFFE8F3EF), RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center
-            ) { Text("↗", color = Green, style = MaterialTheme.typography.titleLarge) }
+            ) { Text(if (isIncome) "＋" else "−", color = if (isIncome) Green else Red, style = MaterialTheme.typography.titleLarge) }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(expense.title, color = Ink, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(transaction.title, color = Ink, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    expense.category + "  ·  " + dateLabel(expense.occurredAtEpochMillis, language),
+                    "$categoryName  ·  \${dateLabel(transaction.occurredAtEpochMillis, language)}",
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(formatEgp(expense.amountMinor, language), color = Ink, fontWeight = FontWeight.Bold)
+                Text(
+                    (if (isIncome) "+" else "−") + formatEgp(transaction.amountMinor, language),
+                    color = if (isIncome) Green else Red,
+                    fontWeight = FontWeight.Bold
+                )
                 TextButton(onClick = onDelete, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-                    Text(deleteLabel, color = Color(0xFFB45B52), style = MaterialTheme.typography.labelSmall)
+                    Text(deleteLabel, color = Red, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -207,27 +259,46 @@ private fun ExpenseRow(
 }
 
 @Composable
-private fun AddExpenseDialog(
+private fun AddTransactionDialog(
     words: Words,
     onDismiss: () -> Unit,
-    onSave: (String, String, String) -> Unit
+    onSave: (String, String, String, String) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
+    var type by remember { mutableStateOf("EXPENSE") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(words.newExpense, color = Ink, fontWeight = FontWeight.Bold) },
+        title = { Text(words.newTransaction, color = Ink, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(words.expenseName) }, singleLine = true)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalButton(
+                        onClick = { type = "EXPENSE" },
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (type == "EXPENSE") Green else Color(0xFFEAF0ED),
+                            contentColor = if (type == "EXPENSE") Color.White else Ink
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) { Text(words.expenses) }
+                    FilledTonalButton(
+                        onClick = { type = "INCOME" },
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (type == "INCOME") Green else Color(0xFFEAF0ED),
+                            contentColor = if (type == "INCOME") Color.White else Ink
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) { Text(words.income) }
+                }
+                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(words.transactionName) }, singleLine = true)
                 OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text(words.amount) }, supportingText = { Text(words.amountHint) }, singleLine = true)
                 OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text(words.category) }, singleLine = true)
             }
         },
         confirmButton = {
             Button(
-                onClick = { onSave(title, amount, category) },
+                onClick = { onSave(title, amount, category, type) },
                 enabled = title.isNotBlank() && amount.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = Green)
             ) { Text(words.save) }
@@ -250,24 +321,41 @@ private fun dateLabel(epoch: Long, language: String): String =
     SimpleDateFormat("dd MMM yyyy", if (language == "ar") Locale("ar") else Locale.US).format(Date(epoch))
 
 private data class Words(
-    val greeting: String, val totalExpenses: String, val localData: String,
-    val recent: String, val savedEntries: (Int) -> String, val addExpense: String,
-    val emptyTitle: String, val emptyBody: String, val newExpense: String,
-    val expenseName: String, val amount: String, val amountHint: String,
-    val category: String, val save: String, val cancel: String, val delete: String
+    val greeting: String,
+    val netBalance: String,
+    val income: String,
+    val expenses: String,
+    val recent: String,
+    val savedEntries: (Int) -> String,
+    val addTransaction: String,
+    val emptyTitle: String,
+    val emptyBody: String,
+    val newTransaction: String,
+    val transactionName: String,
+    val amount: String,
+    val amountHint: String,
+    val category: String,
+    val general: String,
+    val save: String,
+    val cancel: String,
+    val delete: String,
+    val confirmDelete: String,
+    val confirmDeleteBody: String
 )
 
 private val Arabic = Words(
-    "مساء الخير", "إجمالي المصروفات", "بياناتك محفوظة على هذا الجهاز فقط",
-    "أحدث المصروفات", { "عدد العمليات: $it" }, "＋ إضافة مصروف",
-    "لا توجد مصروفات بعد", "أضف أول عملية لتظهر هنا تلقائياً",
-    "مصروف جديد", "اسم المصروف", "المبلغ بالجنيه", "مثال: 125.50",
-    "التصنيف", "حفظ العملية", "إلغاء", "حذف"
+    "مساء الخير", "صافي الرصيد", "الدخل", "المصروفات", "أحدث العمليات",
+    { "عدد العمليات: $it" }, "＋ إضافة عملية", "لا توجد عمليات بعد",
+    "أضف أول دخل أو مصروف ليظهر هنا", "عملية مالية جديدة", "اسم العملية",
+    "المبلغ بالجنيه", "مثال: 125.50", "التصنيف", "عام", "حفظ العملية",
+    "إلغاء", "حذف", "تأكيد الحذف",
+    "سيتم حذف هذه العملية نهائيًا من سجل الجهاز."
 )
 private val English = Words(
-    "Good evening", "Total expenses", "Your data stays on this device",
-    "Recent expenses", { "$it saved entries" }, "＋ Add expense",
-    "No expenses yet", "Add your first entry and it will appear here",
-    "New expense", "Expense name", "Amount in EGP", "Example: 125.50",
-    "Category", "Save expense", "Cancel", "Delete"
+    "Good evening", "Net balance", "Income", "Expenses", "Recent transactions",
+    { "\$it saved transactions" }, "＋ Add transaction", "No transactions yet",
+    "Add your first income or expense", "New transaction", "Transaction name",
+    "Amount in EGP", "Example: 125.50", "Category", "General", "Save transaction",
+    "Cancel", "Delete", "Confirm deletion",
+    "This transaction will be permanently deleted from this device."
 )
