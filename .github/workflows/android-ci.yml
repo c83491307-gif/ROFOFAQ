@@ -31,28 +31,12 @@ jobs:
       - uses: android-actions/setup-android@v4
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-      - name: Unit tests
+      - name: Unit and Robolectric Room tests
         run: gradle --no-daemon testDebugUnitTest
       - name: Android lint
         run: gradle --no-daemon lintDebug
       - name: Debug APK
         run: gradle --no-daemon assembleDebug
-      - name: Enable KVM for the Android emulator
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          test -e /dev/kvm
-      - name: Instrumented Room tests
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          arch: x86_64
-          profile: pixel_2
-          emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: true
-          script: gradle --no-daemon connectedDebugAndroidTest
       - name: Upload verification artifacts
         if: always()
         uses: actions/upload-artifact@v4
