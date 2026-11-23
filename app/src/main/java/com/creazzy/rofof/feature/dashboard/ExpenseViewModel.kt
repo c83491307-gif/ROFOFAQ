@@ -102,19 +102,19 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun addTransaction(title: String, amount: String, category: String, type: String) {
+    fun addTransaction(title: String, amount: String, category: String, type: String, accountId: String = RoomTransactionRepository.DEFAULT_ACCOUNT_ID) {
         val cleanTitle = title.trim()
         if (cleanTitle.isEmpty() || (type != "INCOME" && type != "EXPENSE")) return
-        val minorUnits = runCatching {
-            BigDecimal(amount.trim().replace(',', '.'))
-                .setScale(2, RoundingMode.UNNECESSARY)
-                .movePointRight(2)
-                .longValueExact()
-        }.getOrNull() ?: return
-        if (minorUnits <= 0L) return
-
         viewModelScope.launch {
             repository.ensureDefaults()
+            val account = database.accountDao().findById(accountId)?.takeIf { !it.isArchived } ?: return@launch
+            val minorUnits = runCatching {
+                BigDecimal(amount.trim().replace(',', '.'))
+                    .setScale(account.currencyExponent, RoundingMode.UNNECESSARY)
+                    .movePointRight(account.currencyExponent)
+                    .longValueExact()
+            }.getOrNull() ?: return@launch
+            if (minorUnits <= 0L) return@launch
             val categoryName = category.trim().ifEmpty { "General" }
             val categoryId = database.categoryDao().findByNameAndType(categoryName, type)?.id
                 ?: UUID.randomUUID().toString().also { id ->
@@ -139,9 +139,9 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                     title = cleanTitle,
                     transactionType = type,
                     amountMinor = minorUnits,
-                    currencyCode = "EGP",
-                    currencyExponent = 2,
-                    accountId = RoomTransactionRepository.DEFAULT_ACCOUNT_ID,
+                    currencyCode = account.currencyCode,
+                    currencyExponent = account.currencyExponent,
+                    accountId = account.id,
                     categoryId = categoryId,
                     occurredAtEpochMillis = now,
                     createdAtEpochMillis = now,
