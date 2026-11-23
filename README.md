@@ -58,9 +58,12 @@ gradle connectedDebugAndroidTest
 
 - [x] Local-first Android foundation and Room database.
 - [x] Arabic/English dashboard and RTL/LTR switching.
-- [x] Local income/expense ledger with Room persistence, categories, totals and confirmed deletion.
+- [x] Local income/expense ledger with Room persistence, account selection, categories, totals and confirmed deletion.
 - [x] Default cash account and typed category records; legacy expense rows are migrated into the ledger while retaining their currency and category labels.
-- [ ] User-managed multiple accounts, account transfers, category editing and two-level category management.
+- [x] Multiple local accounts with opening balances and live per-account balances.
+- [x] Same-currency atomic account transfers, excluded from income/expense totals.
+- [x] Two-level income/expense categories and transaction category validation.
+- [ ] Account/category editing and safe archival UI.
 - [ ] Shared purchases, participants, allocations and settlements.
 - [ ] Budgets, goals, recurring drafts, reports and forecasts.
 - [ ] Import/export, backup/restore and app security.
