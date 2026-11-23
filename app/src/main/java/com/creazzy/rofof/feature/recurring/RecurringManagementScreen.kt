@@ -28,6 +28,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.creazzy.rofof.data.local.RecurringDraftEntity
 import com.creazzy.rofof.data.local.RecurringRuleEntity
 import com.creazzy.rofof.data.local.RofofDatabase
+import com.creazzy.rofof.data.repository.RecurringDraftApprovalRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -41,8 +43,29 @@ import java.util.UUID
 class RecurringViewModel(application: Application) : AndroidViewModel(application) {
     private val db = RofofDatabase.getInstance(application)
     private val dao = db.recurringDao()
+    private val approvalRepository = RecurringDraftApprovalRepository(db)
+    val actionMessage = MutableStateFlow("")
     val rules = dao.observeRules().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val drafts = dao.observeDrafts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun approveDraft(draftId: String) {
+        viewModelScope.launch {
+            actionMessage.value = runCatching {
+                approvalRepository.approve(draftId, System.currentTimeMillis())
+                "تم اعتماد المسودة وتسجيل المعاملة · Draft approved and posted"
+            }.getOrElse { "تعذر الاعتماد: ${it.message ?: "خطأ غير معروف"}" }
+        }
+    }
+
+    fun skipDraft(draftId: String) {
+        viewModelScope.launch {
+            actionMessage.value = if (approvalRepository.skip(draftId)) {
+                "تم تخطي المسودة · Draft skipped"
+            } else {
+                "المسودة لم تعد معلقة · Draft is no longer pending"
+            }
+        }
+    }
 
     fun addMonthlyExpense(title: String, amount: String) {
         val cleanTitle = title.trim()
@@ -115,6 +138,7 @@ fun RecurringManagementScreen(onBack: () -> Unit) {
     val vm: RecurringViewModel = viewModel()
     val rules by vm.rules.collectAsState()
     val drafts by vm.drafts.collectAsState()
+    val actionMessage by vm.actionMessage.collectAsState()
     var title by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -130,6 +154,7 @@ fun RecurringManagementScreen(onBack: () -> Unit) {
         Button(onClick = { vm.generateDueDrafts() }, modifier = Modifier.fillMaxWidth()) {
             Text("إنشاء مسودات المستحق · Generate due drafts")
         }
+        if (actionMessage.isNotBlank()) Text(actionMessage)
         Text("القواعد · Rules (${rules.size})")
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(rules, key = { it.id }) { rule ->
@@ -148,6 +173,16 @@ fun RecurringManagementScreen(onBack: () -> Unit) {
                         Text(draft.title)
                         Text("EGP ${BigDecimal.valueOf(draft.amountMinor, draft.currencyExponent).toPlainString()}")
                         Text("Status: ${draft.status}")
+                        if (draft.status == "DRAFT") {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { vm.approveDraft(draft.id) }) {
+                                    Text("اعتماد وتسجيل · Approve")
+                                }
+                                Button(onClick = { vm.skipDraft(draft.id) }) {
+                                    Text("تخطي · Skip")
+                                }
+                            }
+                        }
                     }
                 }
             }
