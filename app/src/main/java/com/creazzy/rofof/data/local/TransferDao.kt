@@ -16,4 +16,7 @@ interface TransferDao {
 
     @Query("DELETE FROM transfers WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("SELECT COUNT(*) > 0 FROM transfers WHERE fromAccountId = :accountId OR toAccountId = :accountId")
+    suspend fun hasTransfersForAccount(accountId: String): Boolean
 }
