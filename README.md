@@ -74,3 +74,80 @@ ROFOFAQ تطبيق بسيط وقوي لتنظيم الإنفاق اليومي. �
 ---
 
 ## البنية المقترحة (Architecture)
+Clients                           │
+│         Web (PWA)  │  Mobile (Flutter)              │
+└─────────────────────┬───────────────────────────────┘
+│ HTTPS / REST
+┌─────────────────────▼───────────────────────────────┐
+│              Backend API                            │
+│  - Auth (JWT + 2FA)                                 │
+│  - Transactions / Accounts / Categories / Budgets   │
+│  - Import/Export Engine                             │
+│  - Rules Engine (auto-categorization)               │
+└─────────────┬───────────────────────┬───────────────┘
+│                       │
+┌────────▼────────┐     ┌────────▼────────┐
+│  SQLite /       │     │  File Storage   │
+│  PostgreSQL     │     │  (Local / S3)   │
+└─────────────────┘     └─────────────────┘
+---
+
+## Tech Stack المقترح
+
+| المكون              | التقنية المقترحة              | ملاحظات |
+|---------------------|-------------------------------|---------|
+| **Backend**         | Go أو Python (FastAPI)        | خفيف وسريع |
+| **Frontend**        | Vue 3 + TypeScript أو Flutter | PWA أو تطبيقات أصلية |
+| **قاعدة البيانات**  | SQLite (افتراضي) + PostgreSQL | سهولة النشر |
+| **التخزين**         | Local disk أو S3-compatible   | للمرفقات |
+| **الحاويات**        | Docker + Docker Compose       | نشر سهل |
+| **المصادقة**        | JWT + 2FA (TOTP)              | أمان أساسي |
+
+### خيارات تقنية مفصلة
+
+**الخيار أ (موصى به للبداية السريعة):**
+- Backend: **Go**
+- Frontend: **Vue 3 + TypeScript**
+- DB: **SQLite** (يمكن الترقية لاحقاً لـ PostgreSQL)
+- UI: متجاوب + PWA
+
+**الخيار ب (للموبايل أولاً):**
+- Backend: **Python FastAPI**
+- Frontend: **Flutter** (Android + iOS + Web)
+- DB: **SQLite / PostgreSQL**
+
+**الخيار ج (أبسط ما يمكن):**
+- Backend + Frontend: **Go** مع HTML/CSS/JS خام
+- تخزين: **JSON** أو SQLite
+- مناسب للـ Homelab
+
+---
+
+## هيكل المشروع المقترح
+ROFOFAQ/
+├── backend/                 # API server
+│   ├── cmd/
+│   ├── internal/
+│   │   ├── auth/
+│   │   ├── transactions/
+│   │   ├── accounts/
+│   │   ├── categories/
+│   │   ├── budgets/
+│   │   └── import/
+│   ├── migrations/
+│   └── go.mod / requirements.txt
+├── frontend/                # Web / PWA
+│   ├── src/
+│   │   ├── components/
+│   │   ├── views/
+│   │   ├── stores/
+│   │   └── api/
+│   └── package.json
+├── mobile/                  # (اختياري) Flutter
+├── docker/
+│   ├── Dockerfile
+│   └── docker-compose.yml
+├── docs/
+├── .gitignore
+├── LICENSE
+└── README.md
