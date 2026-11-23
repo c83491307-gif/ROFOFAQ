@@ -288,7 +288,7 @@ private fun TransactionRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(transaction.title, color = Ink, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    "$categoryName  ·  \${dateLabel(transaction.occurredAtEpochMillis, language)}",
+                    "$categoryName  ·  ${dateLabel(transaction.occurredAtEpochMillis, language)}",
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall
                 )
