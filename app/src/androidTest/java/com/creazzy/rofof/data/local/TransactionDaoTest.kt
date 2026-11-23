@@ -135,6 +135,46 @@ class TransactionDaoTest {
     }
 
     @Test
+    fun dashboardTotalsIncludeFullHistoryAndDoNotMixCurrencies() = runBlocking {
+        val dao = database.transactionDao()
+        dao.insert(TransactionEntity("egp-i", "Salary", "INCOME", 10000L, "EGP", 2, "cash", "salary", 1L, 1L, null))
+        dao.insert(TransactionEntity("egp-e", "Rent", "EXPENSE", 3000L, "EGP", 2, "cash", "rent", 2L, 2L, null))
+        dao.insert(TransactionEntity("usd-i", "USD income", "INCOME", 90000L, "USD", 2, "usd", "salary", 3L, 3L, null))
+
+        val totals = dao.observeTotals("EGP", 2).first()
+        assertEquals(10000L, totals.incomeMinor)
+        assertEquals(3000L, totals.expenseMinor)
+    }
+
+    @Test
+    fun transactionRepositoryRejectsCurrencyOrCategoryMismatch() = runBlocking {
+        val finance = com.creazzy.rofof.data.repository.RoomFinanceRepository(database)
+        val accountId = finance.createAccount("Cash", "EGP", 2, 0L)
+        val repository = com.creazzy.rofof.data.repository.RoomTransactionRepository(
+            database.transactionDao(), database.accountDao(), database.categoryDao()
+        )
+        finance.createCategory("Salary", "INCOME")
+        val wrongCurrency = runCatching {
+            repository.add(
+                com.creazzy.rofof.domain.model.LedgerTransaction(
+                    "bad-currency", "Wrong", "EXPENSE", 100L, "USD", 2,
+                    accountId, "default-expense-general", 1L, 1L, null
+                )
+            )
+        }
+        assertEquals(true, wrongCurrency.isFailure)
+        val wrongCategory = runCatching {
+            repository.add(
+                com.creazzy.rofof.domain.model.LedgerTransaction(
+                    "bad-category", "Wrong", "EXPENSE", 100L, "EGP", 2,
+                    accountId, "default-income-general", 1L, 1L, null
+                )
+            )
+        }
+        assertEquals(true, wrongCategory.isFailure)
+    }
+
+    @Test
     fun deletingOneTransactionDoesNotDeleteOthers() = runBlocking {
         val dao = database.transactionDao()
         dao.insert(TransactionEntity("one", "A", "EXPENSE", 100, "EGP", 2, "cash", "general", 1L, 1L, null))
