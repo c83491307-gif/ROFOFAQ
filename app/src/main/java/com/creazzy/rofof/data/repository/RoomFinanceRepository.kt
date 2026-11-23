@@ -9,6 +9,7 @@ import com.creazzy.rofof.data.local.RofofDatabase
 import com.creazzy.rofof.data.local.TransferDao
 import com.creazzy.rofof.data.local.TransferEntity
 import kotlinx.coroutines.flow.Flow
+import java.util.Currency
 import java.util.UUID
 
 class RoomFinanceRepository(
@@ -32,6 +33,11 @@ class RoomFinanceRepository(
         require(cleanName.isNotEmpty()) { "Account name is required" }
         require(code.matches(Regex("[A-Z]{3}"))) { "Currency must be a 3-letter ISO code" }
         require(currencyExponent in 0..4) { "Unsupported currency exponent" }
+        val isoCurrency = runCatching { Currency.getInstance(code) }.getOrNull()
+            ?: error("Unknown ISO currency code")
+        require(isoCurrency.defaultFractionDigits == currencyExponent) {
+            "Currency exponent does not match ISO currency metadata"
+        }
         val id = UUID.randomUUID().toString()
         accountDao.insert(
             AccountEntity(
