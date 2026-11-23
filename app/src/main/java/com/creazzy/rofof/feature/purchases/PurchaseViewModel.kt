@@ -78,7 +78,7 @@ class PurchaseViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun recordPayment(participantId: String, amount: String, method: String) {
+    fun recordPayment(participantId: String, amount: String, method: String, idempotencyKey: String = UUID.randomUUID().toString()) {
         val sessionId = selectedId.value ?: return
         val session = sessions.value.firstOrNull { it.id == sessionId } ?: return
         execute {
@@ -87,7 +87,7 @@ class PurchaseViewModel(application: Application) : AndroidViewModel(application
                 participantId = participantId,
                 amountMinor = toMinor(amount, session.currencyExponent),
                 paymentMethod = method,
-                idempotencyKey = UUID.randomUUID().toString()
+                idempotencyKey = idempotencyKey
             )
         }
     }
