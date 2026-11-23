@@ -9,6 +9,8 @@ import com.creazzy.rofof.data.local.LocalPreferenceEntity
 import com.creazzy.rofof.data.local.RofofDatabase
 import com.creazzy.rofof.data.repository.RoomTransactionRepository
 import com.creazzy.rofof.domain.model.LedgerTransaction
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -25,6 +27,32 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         database.accountDao(),
         database.categoryDao()
     )
+
+    private val _financeActionMessage = MutableStateFlow<String?>(null)
+    val financeActionMessage = _financeActionMessage.asStateFlow()
+
+    fun clearFinanceActionMessage() { _financeActionMessage.value = null }
+
+    private fun runFinanceAction(successMessage: String, action: suspend () -> Unit) {
+        viewModelScope.launch {
+            _financeActionMessage.value = runCatching { action() }
+                .fold({ successMessage }, { localizeFinanceError(it.message.orEmpty()) })
+        }
+    }
+
+    private fun localizeFinanceError(message: String): String {
+        if (language.value != "ar") return message.ifBlank { "The operation could not be completed." }
+        return when {
+            message.contains("Move or remove account activity") -> "لا يمكن أرشفة الحساب لوجود عمليات أو تحويلات مرتبطة به. انقلها أو عالجها أولاً."
+            message.contains("Default account cannot be archived") -> "لا يمكن أرشفة الحساب النقدي الافتراضي."
+            message.contains("Archive child categories first") -> "أرشف الفئات الفرعية أولاً قبل أرشفة الفئة الرئيسية."
+            message.contains("Category has transactions") -> "لا يمكن أرشفة الفئة لارتباطها بعمليات مالية. أعد إسناد العمليات أولاً."
+            message.contains("already archived") -> "هذا العنصر مؤرشف بالفعل."
+            message.contains("not found") -> "العنصر المطلوب غير موجود أو لم يعد نشطاً."
+            message.contains("name is required") -> "الاسم مطلوب."
+            else -> "تعذر تنفيذ العملية: $message"
+        }
+    }
 
     val transactions = repository.observeRecent()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -78,21 +106,25 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch { runCatching { financeRepository.createCategory(name, type, parentId) } }
     }
 
-    fun renameAccount(id: String, name: String) {
-        viewModelScope.launch { runCatching { financeRepository.renameAccount(id, name) } }
-    }
+    fun renameAccount(id: String, name: String) =
+        runFinanceAction(if (language.value == "ar") "تم تعديل اسم الحساب." else "Account renamed.") {
+            financeRepository.renameAccount(id, name)
+        }
 
-    fun archiveAccount(id: String) {
-        viewModelScope.launch { runCatching { financeRepository.archiveAccount(id) } }
-    }
+    fun archiveAccount(id: String) =
+        runFinanceAction(if (language.value == "ar") "تمت أرشفة الحساب مع الاحتفاظ بسجلاته." else "Account archived; its history was kept.") {
+            financeRepository.archiveAccount(id)
+        }
 
-    fun renameCategory(id: String, name: String) {
-        viewModelScope.launch { runCatching { financeRepository.renameCategory(id, name) } }
-    }
+    fun renameCategory(id: String, name: String) =
+        runFinanceAction(if (language.value == "ar") "تم تعديل اسم الفئة." else "Category renamed.") {
+            financeRepository.renameCategory(id, name)
+        }
 
-    fun archiveCategory(id: String) {
-        viewModelScope.launch { runCatching { financeRepository.archiveCategory(id) } }
-    }
+    fun archiveCategory(id: String) =
+        runFinanceAction(if (language.value == "ar") "تمت أرشفة الفئة مع الاحتفاظ بالعمليات التاريخية." else "Category archived; historical transactions were kept.") {
+            financeRepository.archiveCategory(id)
+        }
 
     val language = database.localPreferenceDao().observe("language")
         .map { it?.value?.takeIf { value -> value == "en" || value == "ar" } ?: "ar" }

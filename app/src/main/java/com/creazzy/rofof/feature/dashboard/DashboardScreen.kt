@@ -66,6 +66,7 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     val managedCategories by expenseViewModel.managedCategories.collectAsState()
     val totals by expenseViewModel.totals.collectAsState()
     val language by expenseViewModel.language.collectAsState()
+    val financeActionMessage by expenseViewModel.financeActionMessage.collectAsState()
     val isArabic = language == "ar"
     val direction = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
     val words = if (isArabic) Arabic else English
@@ -251,6 +252,21 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
         )
     }
 }
+
+    financeActionMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = expenseViewModel::clearFinanceActionMessage,
+            title = { Text(if (isArabic) "إدارة الحسابات والفئات" else "Account & category management") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = expenseViewModel::clearFinanceActionMessage) {
+                    Text(if (isArabic) "حسناً" else "OK")
+                }
+            },
+            containerColor = Color.White
+        )
+    }
+
 
 @Composable
 private fun BalanceMetric(label: String, amount: Long, color: Color, language: String, modifier: Modifier) {
