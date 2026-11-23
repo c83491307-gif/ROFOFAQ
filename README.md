@@ -64,9 +64,9 @@ gradle connectedDebugAndroidTest
 - [x] Same-currency atomic account transfers, excluded from income/expense totals.
 - [x] Two-level income/expense categories and transaction category validation.
 - [ ] Account/category editing and safe archival UI.
-- [ ] Shared purchases, participants, allocations and settlements.
+- [x] Shared purchase sessions, participants, item-level exact allocations, actual payments, settlement balances and explicit personal-expense source links (CI verification pending).
 - [ ] Budgets, goals, recurring drafts, reports and forecasts.
 - [ ] Import/export, backup/restore and app security.
 - [ ] Optional OCR and future web/sync extensions.
 
-The checked items above describe delivered source functionality, not a claim that the latest branch has passed CI. See the implementation reports for exact verification evidence.
+The checked items above describe delivered source functionality, not a claim that the latest branch has passed CI. See the implementation reports for exact verification evidence, including [Priority 2 shared purchases](docs/implementation/PHASE_4_SHARED_PURCHASES.md).
