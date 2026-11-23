@@ -109,6 +109,7 @@ data class ParticipantSettlementRow(
 
 data class PurchaseAllocationView(
     val allocationId: String,
+    val itemId: String,
     val itemTitle: String,
     val participantId: String,
     val participantName: String,
