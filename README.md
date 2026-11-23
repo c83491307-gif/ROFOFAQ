@@ -1,21 +1,40 @@
 # ROFOF
 
-ROFOF is a local-first Android application for shared purchases and personal expense management.
+**ROFOF** is an offline-first Android application for daily spending, shared purchases, and personal finance management. Arabic is a first-class language, with English and RTL/LTR support.
 
-## Architecture
+## Product direction
 
-- Kotlin, Jetpack Compose and Room.
-- Room is the source of truth for core data stored on the device.
-- Core workflows are designed to work without account or network access.
-- Backend and synchronization are optional future extensions; they are not enabled in the local-first foundation.
-- Monetary values use integer minor units and explicit ISO currency metadata. Floating-point values are not used for money.
+The original project roadmap covers:
+- Daily income and expense transactions.
+- Multiple cash, card and savings accounts.
+- Categories and subcategories, transfers, recurring templates, splits, receipt attachments and tags.
+- Budgets, savings goals, loans and budget alerts.
+- Monthly category reports, cash flow, net worth, search and spending forecasts.
+- CSV import/export, with other financial formats added only after parser validation.
+- Optional app lock and multi-user capabilities.
+- Arabic-first UX, English, light/dark themes, and a future responsive web/PWA client.
+- Optional receipt OCR and AI-assisted insights.
+
+See [the full README requirements mapping](docs/discovery/README_REQUIREMENTS_APPLIED_PLAN.md) for the status of each feature.
+
+## Approved architecture
+
+The current delivery is **native Android first**, using Kotlin, Jetpack Compose and Room.
+
+- Room/SQLite is the source of truth for core device-local data.
+- Core workflows must work without an account, backend or network connection.
+- Backend, cloud storage, banking sync and web/PWA are optional future extensions; none is required or enabled in the Android foundation.
+- Monetary values use integer minor units and explicit ISO currency code/exponent. Floating-point values are not used for money.
+- No cross-currency totals are combined without an explicit conversion.
+- OCR and recurring rules create drafts; they do not silently post financial transactions.
+- Shared purchase allocations enter personal expenses only after explicit user confirmation.
 
 See [accepted architecture decisions](docs/architecture/DECISIONS.md).
 
 ## Android project
 
-- Android application module: `app`
-- Namespace/application ID: `com.creazzy.rofof`
+- Module: `app`
+- Application ID: `com.creazzy.rofof`
 - Minimum Android: API 26
 - Compile/target SDK: API 35
 - JDK: 17
@@ -24,9 +43,9 @@ See [accepted architecture decisions](docs/architecture/DECISIONS.md).
 
 ## Build and verify
 
-The GitHub Actions workflow runs unit tests, Android lint, debug APK assembly and Room instrumentation tests on an Android emulator.
+The GitHub Actions workflow runs JVM tests, Android lint, debug APK assembly and Room instrumentation tests on an Android emulator.
 
-On a machine with Android SDK, JDK 17 and Gradle 8.9 installed:
+With Android SDK, JDK 17 and Gradle 8.9 installed:
 
 ```bash
 gradle testDebugUnitTest
@@ -35,4 +54,15 @@ gradle assembleDebug
 gradle connectedDebugAndroidTest
 ```
 
-The Android UI now includes a bilingual Arabic/English expense dashboard, explicit RTL/LTR switching, and a Room-backed personal-expense flow. Shared purchase sessions, participants, allocations, contributions, settlements, reporting, backup/restore and the remaining v1.2.0 modules are still subsequent workstreams.
+## Current implementation status
+
+- [x] Local-first Android foundation and Room database.
+- [x] Arabic/English dashboard and RTL/LTR switching.
+- [x] Local personal-expense add/list/delete flow.
+- [ ] Full income/expense ledger, multiple accounts and editable categories.
+- [ ] Shared purchases, participants, allocations and settlements.
+- [ ] Budgets, goals, recurring drafts, reports and forecasts.
+- [ ] Import/export, backup/restore and app security.
+- [ ] Optional OCR and future web/sync extensions.
+
+The checked items above describe delivered source functionality, not a claim that the latest branch has passed CI. See the implementation reports for exact verification evidence.
