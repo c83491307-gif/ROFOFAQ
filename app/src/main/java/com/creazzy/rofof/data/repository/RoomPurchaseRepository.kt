@@ -111,8 +111,7 @@ class RoomPurchaseRepository(private val database: RofofDatabase) {
             val allocations = dao.allocationsForItem(item.id)
             PurchaseMath.requireExactAllocation(item.totalMinor, allocations.associate { it.participantId to it.amountMinor })
         }
-        val settlements = dao.observeSettlements(sessionId)
-        // A direct query snapshot is used by the repository below to avoid treating expected shares as payments.
+        // Read a consistent snapshot before changing the session state.
         val rows = dao.settlementSnapshot(sessionId)
         require(rows.all { it.allocatedMinor <= it.paidMinor }) {
             "All participant balances must be settled before closing"
