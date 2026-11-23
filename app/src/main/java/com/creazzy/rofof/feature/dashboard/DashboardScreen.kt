@@ -62,11 +62,15 @@ private val Red = Color(0xFFB45B52)
 fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     val transactions by expenseViewModel.transactions.collectAsState()
     val categories by expenseViewModel.categories.collectAsState()
+    val accounts by expenseViewModel.accounts.collectAsState()
     val language by expenseViewModel.language.collectAsState()
     val isArabic = language == "ar"
     val direction = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
     val words = if (isArabic) Arabic else English
     var showAdd by remember { mutableStateOf(false) }
+    var showAccounts by remember { mutableStateOf(false) }
+    var showTransfer by remember { mutableStateOf(false) }
+    var showCategories by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<LedgerTransaction?>(null) }
 
     val egpTransactions = transactions.filter { it.currencyCode == "EGP" && it.currencyExponent == 2 }
@@ -96,7 +100,20 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
                     ) { Text(if (isArabic) "EN  ·  LTR" else "عربي  ·  RTL") }
                 }
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth()) {
+                    FilledTonalButton(onClick = { showAccounts = true }, modifier = Modifier.weight(1f)) {
+                        Text(if (isArabic) "الحسابات" else "Accounts")
+                    }
+                    FilledTonalButton(onClick = { showTransfer = true }, modifier = Modifier.weight(1f)) {
+                        Text(if (isArabic) "تحويل" else "Transfer")
+                    }
+                    FilledTonalButton(onClick = { showCategories = true }, modifier = Modifier.weight(1f)) {
+                        Text(if (isArabic) "الفئات" else "Categories")
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(26.dp),
@@ -168,6 +185,34 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
                 }
             }
         }
+    }
+
+    if (showAccounts) {
+        AccountManagerDialog(
+            accounts = accounts,
+            language = language,
+            onCreate = expenseViewModel::createAccount,
+            onDismiss = { showAccounts = false }
+        )
+    }
+    if (showTransfer) {
+        TransferDialog(
+            accounts = accounts,
+            language = language,
+            onTransfer = { from, to, amount, note ->
+                expenseViewModel.transfer(from, to, amount, note)
+                showTransfer = false
+            },
+            onDismiss = { showTransfer = false }
+        )
+    }
+    if (showCategories) {
+        CategoryManagerDialog(
+            categories = categories,
+            language = language,
+            onCreate = expenseViewModel::createCategory,
+            onDismiss = { showCategories = false }
+        )
     }
 
     if (showAdd) {
