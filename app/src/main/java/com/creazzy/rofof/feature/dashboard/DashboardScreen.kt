@@ -78,7 +78,9 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
         .fold(0L) { total, item -> Math.addExact(total, item.amountMinor) }
     val expenses = egpTransactions.asSequence().filter { it.transactionType == "EXPENSE" }
         .fold(0L) { total, item -> Math.addExact(total, item.amountMinor) }
-    val net = Math.subtractExact(income, expenses)
+    val net = accounts.asSequence()
+        .filter { it.currencyCode == "EGP" && it.currencyExponent == 2 }
+        .fold(0L) { total, account -> Math.addExact(total, account.balanceMinor) }
     val categoryNames = categories.associate { it.id to it.name }
 
     androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides direction) {
@@ -219,8 +221,9 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
         AddTransactionDialog(
             words = words,
             onDismiss = { showAdd = false },
-            onSave = { title, amount, category, type ->
-                expenseViewModel.addTransaction(title, amount, category, type)
+            accounts = accounts,
+            onSave = { title, amount, category, type, accountId ->
+                expenseViewModel.addTransaction(title, amount, category, type, accountId)
                 showAdd = false
             }
         )
@@ -309,13 +312,16 @@ private fun TransactionRow(
 @Composable
 private fun AddTransactionDialog(
     words: Words,
+    accounts: List<com.creazzy.rofof.data.local.AccountBalance>,
     onDismiss: () -> Unit,
-    onSave: (String, String, String, String) -> Unit
+    onSave: (String, String, String, String, String) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("EXPENSE") }
+    var accountId by remember(accounts) { mutableStateOf(accounts.firstOrNull()?.id.orEmpty()) }
+    var accountMenu by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(words.newTransaction, color = Ink, fontWeight = FontWeight.Bold) },
@@ -342,12 +348,24 @@ private fun AddTransactionDialog(
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(words.transactionName) }, singleLine = true)
                 OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text(words.amount) }, supportingText = { Text(words.amountHint) }, singleLine = true)
                 OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text(words.category) }, singleLine = true)
+                TextButton(onClick = { accountMenu = true }) {
+                    val selected = accounts.firstOrNull { it.id == accountId }
+                    Text(if (selected == null) words.chooseAccount else selected.name + " · " + selected.currencyCode)
+                }
+                androidx.compose.material3.DropdownMenu(expanded = accountMenu, onDismissRequest = { accountMenu = false }) {
+                    accounts.forEach { account ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text(account.name + " · " + account.currencyCode) },
+                            onClick = { accountId = account.id; accountMenu = false }
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onSave(title, amount, category, type) },
-                enabled = title.isNotBlank() && amount.isNotBlank(),
+                onClick = { onSave(title, amount, category, type, accountId) },
+                enabled = title.isNotBlank() && amount.isNotBlank() && accountId.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = Green)
             ) { Text(words.save) }
         },
@@ -391,7 +409,8 @@ private data class Words(
     val cancel: String,
     val delete: String,
     val confirmDelete: String,
-    val confirmDeleteBody: String
+    val confirmDeleteBody: String,
+    val chooseAccount: String
 )
 
 private val Arabic = Words(
@@ -400,7 +419,7 @@ private val Arabic = Words(
     "أضف أول دخل أو مصروف ليظهر هنا", "عملية مالية جديدة", "اسم العملية",
     "المبلغ بالجنيه", "مثال: 125.50", "التصنيف", "عام", "حفظ العملية",
     "إلغاء", "حذف", "تأكيد الحذف",
-    "سيتم حذف هذه العملية نهائيًا من سجل الجهاز."
+    "سيتم حذف هذه العملية نهائيًا من سجل الجهاز.", "اختر الحساب"
 )
 private val English = Words(
     "Good evening", "Net balance (EGP)", "Income (EGP)", "Expenses (EGP)", "Recent transactions",
@@ -408,5 +427,5 @@ private val English = Words(
     "Add your first income or expense", "New transaction", "Transaction name",
     "Amount in EGP", "Example: 125.50", "Category", "General", "Save transaction",
     "Cancel", "Delete", "Confirm deletion",
-    "This transaction will be permanently deleted from this device."
+    "This transaction will be permanently deleted from this device.", "Choose account"
 )
