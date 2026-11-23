@@ -78,13 +78,17 @@ The SQL schema uses REAL for unit conversion factors and habit target values; th
 
 ### ADR-001 — Local-first authority versus server authority
 
+**Resolution (2026-11-23): ACCEPTED — Android local-first.** Room is the authority for core device-local state. Backend and sync are optional future extensions, disabled by default. See `docs/architecture/DECISIONS.md`.
+
 The Android baseline (document 07) says core workflows work offline, require no account/network, and treats the local database as the source of truth. The Engineering Pack skill/target architecture instead describes PostgreSQL as the authoritative server-side source of truth and Room as local persistence/cache.
 
-These are materially different authority models. Proposed safe interpretation for decision: keep core single-device operation fully local-first and make cloud identity/sync an explicit opt-in extension; when sync is enabled, define server authority and conflict/reconciliation rules only for synchronized shared state. This proposal is not yet an approved product decision and must be confirmed before backend/schema implementation.
+The user approved the local-first model. Core workflows run without account or network; Room is authoritative for local state. Backend and synchronization are deferred optional extensions, disabled by default.
 
 ### ADR-002 — Backend scope
 
-The Engineering Pack adds Kotlin/Spring Boot, PostgreSQL, versioned REST APIs, authentication/authorization, background jobs, object storage and CI/CD. The baseline v1.2.0 Android specification does not require an account or network for core workflows and excludes several cloud behaviors from the first release. Decide whether backend is part of the first delivery or a separately gated optional deployment.
+**Resolution (2026-11-23): ACCEPTED — backend is not required for v1 local-first delivery.**
+
+The Engineering Pack adds Kotlin/Spring Boot, PostgreSQL, versioned REST APIs, authentication/authorization, background jobs, object storage and CI/CD. The baseline v1.2.0 Android specification does not require an account or network for core workflows and excludes several cloud behaviors from the first release. Backend is a separately gated optional deployment and is not introduced in this foundation phase.
 
 ### ADR-003 — OCR and external services
 
