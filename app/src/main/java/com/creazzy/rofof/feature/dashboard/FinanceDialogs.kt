@@ -85,7 +85,15 @@ fun TransferDialog(
 ) {
     val ar = language == "ar"
     var sourceId by remember(accounts) { mutableStateOf(accounts.firstOrNull()?.id.orEmpty()) }
-    var destinationId by remember(accounts) { mutableStateOf(accounts.firstOrNull { it.id != sourceId }?.id.orEmpty()) }
+    var destinationId by remember(accounts) {
+        val first = accounts.firstOrNull()
+        mutableStateOf(first?.let { source ->
+            accounts.firstOrNull {
+                it.id != source.id && it.currencyCode == source.currencyCode &&
+                    it.currencyExponent == source.currencyExponent
+            }?.id.orEmpty()
+        }.orEmpty())
+    }
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var sourceExpanded by remember { mutableStateOf(false) }
