@@ -100,7 +100,7 @@ interface TransactionDao {
 
     @Query("""
         SELECT COUNT(*) FROM transactions
-        WHERE transactionType = 'EXPENSE' AND categoryId = :categoryId
+        WHERE isDeleted = 0 AND transactionType = 'EXPENSE' AND categoryId = :categoryId
           AND currencyCode = :currencyCode AND currencyExponent = :currencyExponent
           AND amountMinor = :amountMinor
           AND occurredAtEpochMillis >= :fromEpochMillis AND occurredAtEpochMillis < :toEpochMillis
