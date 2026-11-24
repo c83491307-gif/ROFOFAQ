@@ -386,8 +386,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 _financeActionMessage.value = if (language.value == "ar") "تم حفظ العملية بنجاح." else "Transaction saved."
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (cancelled: CancellationException) {
-                throw cancelled
             } catch (error: Throwable) {
                 _financeActionMessage.value = localizeFinanceError(error.message.orEmpty())
             } finally {
@@ -463,6 +461,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 }
                 ExpenseWidgetUpdater.refresh(getApplication())
                 _financeActionMessage.value = if (language.value == "ar") "تم تحديث العملية المالية." else "Transaction updated."
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (error: Throwable) {
                 _financeActionMessage.value = localizeFinanceError(error.message.orEmpty())
             } finally {
