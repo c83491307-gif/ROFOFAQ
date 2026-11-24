@@ -118,4 +118,37 @@ class TransactionDaoTest {
         dao.delete("one")
         assertEquals(listOf("two"), dao.observeRecent().first().map { it.id })
     }
+
+    @Test fun categoryExpenseSumsRemainSeparatedByCurrencyAndExponent() = runBlocking {
+        val dao = database.transactionDao()
+        dao.insert(TransactionEntity("egp-food", "Food", "EXPENSE", 12500L, "EGP", 2, "cash", "food", 10L, 10L, null))
+        dao.insert(TransactionEntity("egp-fuel", "Fuel", "EXPENSE", 5000L, "EGP", 2, "cash", "fuel", 20L, 20L, null))
+        dao.insert(TransactionEntity("usd-food", "Food USD", "EXPENSE", 700L, "USD", 2, "usd", "food", 30L, 30L, null))
+        dao.insert(TransactionEntity("egp-income", "Salary", "INCOME", 90000L, "EGP", 2, "cash", "salary", 40L, 40L, null))
+
+        val sums = dao.observeExpenseSumsByCategory().first()
+        assertEquals(3, sums.size)
+        assertEquals(12500L, sums.single { it.categoryId == "food" && it.currencyCode == "EGP" }.totalMinor)
+        assertEquals(700L, sums.single { it.categoryId == "food" && it.currencyCode == "USD" }.totalMinor)
+        assertEquals(5000L, sums.single { it.categoryId == "fuel" && it.currencyCode == "EGP" }.totalMinor)
+        assertEquals(true, sums.all { it.totalMinor > 0L })
+    }
+
+    @Test fun transactionSearchMatchesTitleNotesAndFormattedAmountWithinFilters() = runBlocking {
+        val dao = database.transactionDao()
+        dao.insert(TransactionEntity("coffee", "Cafe", "EXPENSE", 1250L, "EGP", 2, "cash", "food", 100L, 100L, "Morning coffee"))
+        dao.insert(TransactionEntity("fuel", "Fuel", "EXPENSE", 5000L, "EGP", 2, "cash", "transport", 200L, 200L, null))
+        dao.insert(TransactionEntity("usd", "Cafe USD", "EXPENSE", 1250L, "USD", 2, "usd", "food", 300L, 300L, null))
+        dao.insert(TransactionEntity("salary", "Cafe refund", "INCOME", 1250L, "EGP", 2, "cash", "salary", 400L, 400L, null))
+
+        val noteMatches = dao.searchTransactions("coffee", null, null, null, null, null).first()
+        assertEquals(listOf("coffee"), noteMatches.map { it.id })
+
+        val amountMatches = dao.searchTransactions("12.50", null, null, "EXPENSE", "food", "EGP").first()
+        assertEquals(listOf("coffee"), amountMatches.map { it.id })
+
+        val dateMatches = dao.searchTransactions("", 150L, 350L, null, null, null).first()
+        assertEquals(listOf("usd", "fuel"), dateMatches.map { it.id })
+    }
+
 }
