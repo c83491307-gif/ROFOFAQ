@@ -14,6 +14,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.creazzy.rofof.feature.awareness.BudgetNotificationWorker
+import com.creazzy.rofof.widget.ExpenseWidgetUpdater
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
         quickAddRequested = intent?.action == ACTION_QUICK_ADD
         openDashboardRequested = intent?.action == ACTION_OPEN_DASHBOARD
         scheduleBudgetNotifications()
+        ExpenseWidgetUpdater.refresh(applicationContext)
         window.statusBarColor = android.graphics.Color.rgb(244, 247, 245)
         window.navigationBarColor = android.graphics.Color.rgb(244, 247, 245)
         window.decorView.systemUiVisibility =
@@ -48,6 +50,11 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        ExpenseWidgetUpdater.refresh(applicationContext)
     }
 
     override fun onNewIntent(intent: Intent) {
