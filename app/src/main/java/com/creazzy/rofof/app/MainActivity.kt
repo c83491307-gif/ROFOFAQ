@@ -15,6 +15,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.creazzy.rofof.feature.awareness.BudgetNotificationWorker
+import com.creazzy.rofof.feature.recurring.RecurringTransactionWorker
 import com.creazzy.rofof.widget.ExpenseWidgetUpdater
 import java.util.concurrent.TimeUnit
 
@@ -71,11 +72,20 @@ class MainActivity : ComponentActivity() {
         WorkManager.getInstance(applicationContext).enqueue(
             OneTimeWorkRequestBuilder<BudgetNotificationWorker>().build()
         )
+        WorkManager.getInstance(applicationContext).enqueue(
+            OneTimeWorkRequestBuilder<RecurringTransactionWorker>().build()
+        )
         val request = PeriodicWorkRequestBuilder<BudgetNotificationWorker>(6, TimeUnit.HOURS).build()
         WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
             BUDGET_NOTIFICATION_WORK,
             ExistingPeriodicWorkPolicy.KEEP,
             request
+        )
+        val recurringRequest = PeriodicWorkRequestBuilder<RecurringTransactionWorker>(24, TimeUnit.HOURS).build()
+        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            RECURRING_TRANSACTION_WORK,
+            ExistingPeriodicWorkPolicy.KEEP,
+            recurringRequest
         )
     }
 
@@ -83,5 +93,6 @@ class MainActivity : ComponentActivity() {
         const val ACTION_QUICK_ADD = "com.creazzy.rofof.action.QUICK_ADD"
         const val ACTION_OPEN_DASHBOARD = "com.creazzy.rofof.action.OPEN_DASHBOARD"
         private const val BUDGET_NOTIFICATION_WORK = "rofof-budget-rule-notifications"
+        private const val RECURRING_TRANSACTION_WORK = "rofof-recurring-transactions"
     }
 }
