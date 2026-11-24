@@ -1,7 +1,9 @@
 package com.creazzy.rofof.app
 
 import android.app.Activity
-import androidx.activity.compose.BackHandler
+import androidx.activity.ExperimentalActivityApi
+import androidx.activity.compose.PredictiveBackHandler
+import kotlinx.coroutines.CancellationException
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -72,6 +74,7 @@ private val rootDestinations = listOf(
     RootDestination("settings", "الإعدادات", "Settings", "⚙")
 )
 
+@OptIn(ExperimentalActivityApi::class)
 @Composable
 fun ROFOFRootScreen(
     openQuickAdd: Boolean = false,
@@ -90,13 +93,14 @@ fun ROFOFRootScreen(
     val language by expenseViewModel.language.collectAsState()
     val isArabic = language == "ar"
 
-    BackHandler(enabled = true) {
-        if (currentRoute != "dashboard") {
-            if (!navController.popBackStack()) {
-                navController.navigate("dashboard") { launchSingleTop = true }
-            }
-        } else {
+    // Navigation Compose 2.8+ owns predictive pop transitions for destinations.
+    // The root destination uses a predictive handler only for the explicit exit confirmation.
+    PredictiveBackHandler(enabled = currentRoute == "dashboard" && !showExitDialog) { progress ->
+        try {
+            progress.collect { /* No destination preview exists when the dashboard is the root. */ }
             showExitDialog = true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         }
     }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
