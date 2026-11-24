@@ -52,3 +52,7 @@
 - [x] Confirmed Phase 10 merged into `feat/rofof-shared-purchases`; it is not yet merged to `main`.
 - [x] Created this isolated working branch from the Phase 10 cumulative branch.
 - [ ] Remaining implementation and verification gates above are not yet complete.
+
+## CI resilience note (2026-11-24)
+
+The first run after correcting Kotlin CSV escape literals compiled the Kotlin sources successfully, then failed before test execution because Maven Central returned HTTP 429 while resolving Robolectric's `nativeruntime-dist-compat` artifact. This is an external dependency-rate-limit failure, not a test assertion failure. The Android CI workflow now retries unit tests and emulator instrumentation with bounded backoff, and retries lint/APK assembly to reuse the populated Gradle cache. A passing result is still required before merge or release.
