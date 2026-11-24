@@ -32,10 +32,10 @@ class TransactionCsvImporterTest {
     }
 
     @Test fun rejectsStrayQuoteAndCharactersAfterClosingQuote() {
-        val stray = "1,Lu"nch,EXPENSE,5.00,EGP,2,cash,food,2026-01-01T10:00:00Z,2026-01-01T10:01:00Z,"
+        val stray = "1,Lu\"nch,EXPENSE,5.00,EGP,2,cash,food,2026-01-01T10:00:00Z,2026-01-01T10:01:00Z,"
         val trailing = "1,\"Lunch\"oops,EXPENSE,5.00,EGP,2,cash,food,2026-01-01T10:00:00Z,2026-01-01T10:01:00Z,"
-        assertFalse(TransactionCsvImporter.parse("$header\\n$stray").isValid)
-        assertFalse(TransactionCsvImporter.parse("$header\\n$trailing").isValid)
+        assertFalse(TransactionCsvImporter.parse("$header\n$stray").isValid)
+        assertFalse(TransactionCsvImporter.parse("$header\n$trailing").isValid)
     }
 
     @Test fun rejectsFormulaLikeAmountAndInvalidTimestamp() {
