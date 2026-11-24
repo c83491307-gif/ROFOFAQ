@@ -114,7 +114,7 @@ object DifferentialBackupPlanner {
 data class RecoveryManifest(val entries: List<BackupFileDigest>, val digest: String)
 object RecoveryLab {
     fun digest(entries: List<BackupFileDigest>): String {
-        val canonical = entries.sortedBy { it.path }.joinToString("\n") { "\${it.path}|\${it.sha256.lowercase()}|\${it.sizeBytes}" }
+        val canonical = entries.sortedBy { it.path }.joinToString("\n") { it.path + "|" + it.sha256.lowercase() + "|" + it.sizeBytes }
         return MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray()).joinToString("") { "%02x".format(it) }
     }
     fun verify(manifest: RecoveryManifest) = manifest.entries.map { it.path }.distinct().size == manifest.entries.size &&
@@ -174,9 +174,9 @@ object ApplicationHealthMonitor {
             rows.forEach { row ->
                 if (row.component.isBlank() || row.latencyMillis < 0 || row.errors < 0 || row.queueDepth < 0) add("INVALID_SAMPLE")
                 else {
-                    if (row.latencyMillis > latencyLimit) add("SLOW:\${row.component}")
-                    if (row.errors > errorLimit) add("ERRORS:\${row.component}")
-                    if (row.queueDepth > queueLimit) add("QUEUE:\${row.component}")
+                    if (row.latencyMillis > latencyLimit) add("SLOW:" + row.component)
+                    if (row.errors > errorLimit) add("ERRORS:" + row.component)
+                    if (row.queueDepth > queueLimit) add("QUEUE:" + row.component)
                 }
             }
         }
