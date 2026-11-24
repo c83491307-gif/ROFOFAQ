@@ -53,6 +53,27 @@ interface AccountDao {
     suspend fun findById(id: String): AccountEntity?
 
     @Query("""
+        SELECT accounts.*,
+            accounts.openingBalanceMinor
+            + COALESCE((SELECT SUM(CASE WHEN transactionType = 'INCOME' THEN amountMinor
+                WHEN transactionType = 'EXPENSE' THEN -amountMinor ELSE 0 END)
+                FROM transactions WHERE accountId = accounts.id), 0)
+            + COALESCE((SELECT SUM(amountMinor) FROM transfers WHERE toAccountId = accounts.id), 0)
+            - COALESCE((SELECT SUM(amountMinor) FROM transfers WHERE fromAccountId = accounts.id), 0)
+            AS balanceMinor
+        FROM accounts
+        WHERE accounts.isArchived = 0
+          AND accounts.currencyCode = :currencyCode
+          AND accounts.currencyExponent = :currencyExponent
+        ORDER BY balanceMinor DESC, accounts.createdAtEpochMillis
+    """)
+    suspend fun findActiveBalancesForCurrency(
+        currencyCode: String,
+        currencyExponent: Int
+    ): List<AccountBalance>
+
+
+    @Query("""
         SELECT * FROM accounts
         WHERE isArchived = 0 AND currencyCode = :currencyCode AND currencyExponent = :currencyExponent
         ORDER BY CASE WHEN id = 'default-cash' THEN 0 ELSE 1 END, createdAtEpochMillis
