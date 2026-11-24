@@ -81,3 +81,8 @@ The checked items above describe delivered source functionality, not a claim tha
 - New offline operational engines for data quality, lineage, differential backup planning, recovery manifest checks, approvals, rules, budget suggestions, sensitive-operation guards, tax-document metadata, merchant aliases, localization checks, allowlisted plugins, seasonality, sensitivity and health checks.
 
 See [new enhancements and V6.0 input implementation](docs/implementation/NEW_15_ENHANCEMENTS_AND_V6_INPUT.md) for implementation boundaries and verification status. These engines are foundations; the document lists persistence and product-integration gates that remain open.
+
+
+## Build a debug APK with GitHub Actions
+
+The repository includes a cloud build workflow. Open **Actions → ROFOF Debug APK**, run it manually or push to `feat/rofof-apk-integration`, then download the `ROFOF-Debug-APK` artifact after a successful run. The build uses JDK 17, Android SDK 35 and Gradle 8.9 provided by GitHub Actions; it does not require Android Studio or a local Gradle installation. The broader Android CI workflow also runs unit/Robolectric tests, lint and emulator instrumentation. See [APK build and branch integration](docs/implementation/APK_BUILD_AND_BRANCH_INTEGRATION.md).
