@@ -56,8 +56,24 @@ jobs:
               json.loads(path.read_text(encoding="utf-8"))
           print("Required Android assets are valid JSON.")
           PY
-      - name: Run unit tests, lint and assemble debug APK
-        run: gradle --no-daemon --stacktrace testDebugUnitTest lintDebug assembleDebug
+      - name: Run unit tests, lint and assemble debug APK with bounded retry
+        shell: bash
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3; do
+            set +e
+            gradle --no-daemon --stacktrace testDebugUnitTest lintDebug assembleDebug 2>&1 | tee /tmp/rofof-verify.log
+            status=${PIPESTATUS[0]}
+            set -e
+            if [ "$status" -eq 0 ]; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit "$status"
+            fi
+            echo "Verification attempt $attempt failed (exit $status); retrying once the Gradle cache/dependency service has had time to recover."
+            sleep $((attempt * 30))
+          done
       - name: Verify debug APK
         shell: bash
         run: |
@@ -109,7 +125,22 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -no-audio -no-boot-anim
-          script: gradle --no-daemon --stacktrace connectedDebugAndroidTest
+          script: |
+            set -uo pipefail
+            for attempt in 1 2 3; do
+              set +e
+              gradle --no-daemon --stacktrace connectedDebugAndroidTest 2>&1 | tee /tmp/rofof-instrumented.log
+              status=${PIPESTATUS[0]}
+              set -e
+              if [ "$status" -eq 0 ]; then
+                exit 0
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                exit "$status"
+              fi
+              echo "Instrumentation attempt $attempt failed (exit $status); retrying with the existing emulator."
+              sleep $((attempt * 30))
+            done
       - name: Upload instrumentation reports
         if: always()
         uses: actions/upload-artifact@v4
