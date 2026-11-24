@@ -49,6 +49,9 @@ interface PurchaseDao {
     suspend fun insertExpenseLink(value: AllocationPersonalExpenseLinkEntity)
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertDebtRecord(value: DebtEntity)
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertDebtLinks(values: List<PurchaseAllocationDebtLinkEntity>)
 
     @Query("SELECT * FROM purchase_allocation_debt_links WHERE allocationId = :allocationId LIMIT 1")
