@@ -52,7 +52,7 @@ class SmartEntryParser(
 
     private fun normalize(value: String): String {
         val decomposed = Normalizer.normalize(value, Normalizer.Form.NFD)
-            .replace(Regex("\p{Mn}+"), "")
+            .replace(Regex("\\p{Mn}+"), "")
         return decomposed
             .replace('أ', 'ا').replace('إ', 'ا').replace('آ', 'ا')
             .replace('ى', 'ي').replace('ة', 'ه')
