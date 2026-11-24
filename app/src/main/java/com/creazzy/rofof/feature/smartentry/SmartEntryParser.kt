@@ -31,8 +31,11 @@ class SmartEntryParser(
     fun parse(input: String): ParsedEntry {
         val original = input.trim()
         val normalized = normalize(toAsciiDigits(original))
-        val amount = AMOUNT.find(normalized)?.groupValues?.get(1)
-            ?.replace(',', '.')
+        val expression = if (DATE_LIKE.containsMatchIn(normalized)) null
+            else MATH_EXPRESSION.find(normalized)?.groupValues?.get(1)
+        val calculated = expression?.let(MathExpressionEvaluator::evaluate)
+        val amount = calculated?.toPlainString()
+            ?: AMOUNT.find(normalized)?.groupValues?.get(1)?.replace(',', '.')
         val categoryMatch = allKeywords.entries
             .map { normalize(it.key) to it.value }
             .filter { (keyword, _) -> keyword.isNotBlank() && normalized.contains(keyword) }
@@ -77,6 +80,11 @@ class SmartEntryParser(
 
     companion object {
         private val AMOUNT = Regex("""(?<![\p{L}\d])([0-9]+(?:[.,][0-9]{1,4})?)(?![\p{L}\d])""")
+
+        private val MATH_EXPRESSION = Regex(
+            """(?<![\\p{L}\\d])([0-9]+(?:[.,][0-9]+)?(?:\\s*[+*/-]\\s*[0-9]+(?:[.,][0-9]+)?)+(?![\\p{L}\\d]))"""
+        )
+        private val DATE_LIKE = Regex("""\\b[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}\\b""")
 
         private val INCOME_CUES = listOf("استلمت", "قبضت", "دخل لي", "وصلني", "تحويل وارد")
         private val EXPENSE_CUES = listOf("دفعت", "اشتريت", "صرف", "مصروف", "دفعت")
