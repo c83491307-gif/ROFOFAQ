@@ -18,10 +18,12 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     private var quickAddRequested by mutableStateOf(false)
+    private var openDashboardRequested by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         quickAddRequested = intent?.action == ACTION_QUICK_ADD
+        openDashboardRequested = intent?.action == ACTION_OPEN_DASHBOARD
         scheduleBudgetNotifications()
         window.statusBarColor = android.graphics.Color.rgb(244, 247, 245)
         window.navigationBarColor = android.graphics.Color.rgb(244, 247, 245)
@@ -40,7 +42,9 @@ class MainActivity : ComponentActivity() {
             ) {
                 ROFOFRootScreen(
                     openQuickAdd = quickAddRequested,
-                    onQuickAddConsumed = { quickAddRequested = false }
+                    onQuickAddConsumed = { quickAddRequested = false },
+                    openDashboard = openDashboardRequested,
+                    onDashboardConsumed = { openDashboardRequested = false }
                 )
             }
         }
@@ -49,7 +53,10 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.action == ACTION_QUICK_ADD) quickAddRequested = true
+        when (intent.action) {
+            ACTION_QUICK_ADD -> quickAddRequested = true
+            ACTION_OPEN_DASHBOARD -> openDashboardRequested = true
+        }
     }
 
     private fun scheduleBudgetNotifications() {
