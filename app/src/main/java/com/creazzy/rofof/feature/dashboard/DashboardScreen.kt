@@ -67,6 +67,7 @@ private val Red = Color(0xFFB45B52)
 fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     val transactions by expenseViewModel.transactions.collectAsState()
     val categories by expenseViewModel.categories.collectAsState()
+    val learnedKeywordSuggestions by expenseViewModel.learnedKeywordSuggestions.collectAsState()
     val accounts by expenseViewModel.accounts.collectAsState()
     val managedAccounts by expenseViewModel.managedAccounts.collectAsState()
     val managedCategories by expenseViewModel.managedCategories.collectAsState()
@@ -275,6 +276,7 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
             words = words,
             language = language,
             accounts = accounts,
+            learnedKeywords = learnedKeywordSuggestions,
             onDismiss = { showAdd = false },
             onAnalyze = { command, accountId, occurredAt -> expenseViewModel.analyzeSmartEntry(command, accountId, occurredAt) },
             awarenessReview = awarenessReview,
@@ -291,6 +293,7 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
             words = words,
             language = language,
             accounts = accounts,
+            learnedKeywords = learnedKeywordSuggestions,
             initialTransaction = transaction,
             initialCategoryName = categoryNames[transaction.categoryId] ?: words.general,
             onDismiss = { pendingEdit = null },
@@ -408,6 +411,7 @@ private fun AddTransactionDialog(
     words: Words,
     language: String,
     accounts: List<com.creazzy.rofof.data.local.AccountBalance>,
+    learnedKeywords: Map<String, SmartEntryParser.CategorySuggestion> = emptyMap(),
     onDismiss: () -> Unit,
     onSave: (String, String, String, String, String, Long) -> Unit,
     onAnalyze: (String, String, Long) -> Unit = { _, _, _ -> },
@@ -424,7 +428,7 @@ private fun AddTransactionDialog(
     var smartCommand by remember(initialTransaction?.id) { mutableStateOf("") }
     var smartSuggestion by remember(initialTransaction?.id) { mutableStateOf<String?>(null) }
     var appliedReviewText by remember(initialTransaction?.id) { mutableStateOf<String?>(null) }
-    val smartParser = remember { SmartEntryParser() }
+    val smartParser = remember(learnedKeywords) { SmartEntryParser(learnedKeywords = learnedKeywords) }
     var type by remember(initialTransaction?.id) { mutableStateOf(initialTransaction?.transactionType ?: "EXPENSE") }
     var accountId by remember(accounts, initialTransaction?.id) { mutableStateOf(initialTransaction?.accountId ?: accounts.firstOrNull()?.id.orEmpty()) }
     var accountMenu by remember { mutableStateOf(false) }
@@ -456,13 +460,30 @@ private fun AddTransactionDialog(
                 if (initialTransaction == null) {
                     OutlinedTextField(
                         value = smartCommand,
-                        onValueChange = { smartCommand = it; smartSuggestion = null; appliedReviewText = null; onClearReview() },
+                        onValueChange = {
+                            smartCommand = it
+                            val parsed = smartParser.parse(it)
+                            smartSuggestion = parsed.category?.categoryNameArabic
+                            parsed.category?.let { suggestion ->
+                                category = if (language == "ar") suggestion.categoryNameArabic else suggestion.categoryNameEnglish
+                                type = suggestion.transactionType
+                            }
+                            appliedReviewText = null
+                            onClearReview()
+                        },
                         label = { Text(if (language == "ar") "اكتب العملية بلغتك" else "Describe the transaction") },
                         placeholder = { Text(if (language == "ar") "مثال: قهوة ٥٠ أو استلمت راتب ١٥٠٠٠" else "Example: coffee 50 or received salary 15000") },
                         supportingText = { Text(if (language == "ar") "تحليل محلي على الجهاز — لا يتم الحفظ قبل مراجعتك" else "Parsed locally on this device — nothing is saved until you review") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    smartSuggestion?.let { suggested ->
+                        Text(
+                            (if (language == "ar") "تصنيف مقترح من تعلمك السابق: " else "Learned category suggestion: ") + suggested,
+                            color = Green,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                     TextButton(
                         onClick = { appliedReviewText = null; onAnalyze(smartCommand, accountId, datePickerState.selectedDateMillis ?: System.currentTimeMillis()) },
                         enabled = smartCommand.isNotBlank() && accountId.isNotBlank()
