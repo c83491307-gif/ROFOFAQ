@@ -1,56 +1,198 @@
 package com.creazzy.rofof.app
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.creazzy.rofof.feature.dashboard.DashboardScreen
-import com.creazzy.rofof.feature.purchases.PurchaseManagementScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.creazzy.rofof.feature.budgetgoals.BudgetGoalsScreen
+import com.creazzy.rofof.feature.dashboard.DashboardScreen
+import com.creazzy.rofof.feature.dashboard.ExpenseViewModel
+import com.creazzy.rofof.feature.purchases.PurchaseManagementScreen
 import com.creazzy.rofof.feature.recurring.RecurringManagementScreen
+import java.math.BigDecimal
+import java.text.NumberFormat
+import java.util.Currency
+import java.util.Locale
+
+private data class RootDestination(
+    val route: String,
+    val labelAr: String,
+    val labelEn: String,
+    val symbol: String
+)
+
+private val rootDestinations = listOf(
+    RootDestination("dashboard", "الرئيسية", "Home", "⌂"),
+    RootDestination("transactions", "المعاملات", "Activity", "↕"),
+    RootDestination("budget", "الميزانية", "Budget", "◷"),
+    RootDestination("settings", "الإعدادات", "Settings", "⚙")
+)
 
 @Composable
 fun ROFOFRootScreen() {
-    var destination by remember { mutableStateOf("dashboard") }
-    Column(Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            TextButton(onClick = { destination = "dashboard" }) {
-                Text("الرئيسية · Home", color = if (destination == "dashboard") Color(0xFF147D64) else MaterialTheme.colorScheme.onSurface)
-            }
-            TextButton(onClick = { destination = "purchases" }) {
-                Text("المشتريات المشتركة · Shared", color = if (destination == "purchases") Color(0xFF147D64) else MaterialTheme.colorScheme.onSurface)
-            }
-            TextButton(onClick = { destination = "budgetgoals" }) {
-                Text("الميزانيات والأهداف · Plans", color = if (destination == "budgetgoals") Color(0xFF147D64) else MaterialTheme.colorScheme.onSurface)
-            }
-            TextButton(onClick = { destination = "recurring" }) {
-                Text("المتكرر · Recurring", color = if (destination == "recurring") Color(0xFF147D64) else MaterialTheme.colorScheme.onSurface)
+    val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route ?: "dashboard"
+    val expenseViewModel: ExpenseViewModel = viewModel()
+    val language by expenseViewModel.language.collectAsState()
+    val isArabic = language == "ar"
+
+    Scaffold(
+        containerColor = Color(0xFFF4F7F5),
+        bottomBar = {
+            NavigationBar(containerColor = Color.White) {
+                rootDestinations.forEach { destination ->
+                    NavigationBarItem(
+                        selected = currentRoute == destination.route,
+                        onClick = {
+                            navController.navigate(destination.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = { Text(destination.symbol, style = MaterialTheme.typography.titleMedium) },
+                        label = { Text(if (isArabic) destination.labelAr else destination.labelEn) }
+                    )
+                }
             }
         }
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when (destination) {
-                "dashboard" -> DashboardScreen()
-                "purchases" -> PurchaseManagementScreen(onBack = { destination = "dashboard" })
-                "budgetgoals" -> BudgetGoalsScreen(onBack = { destination = "dashboard" })
-                else -> RecurringManagementScreen(onBack = { destination = "dashboard" })
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = "dashboard",
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable("dashboard") {
+                DashboardScreen(expenseViewModel)
+            }
+            composable("transactions") {
+                TransactionsRoute(expenseViewModel)
+            }
+            composable("budget") {
+                BudgetGoalsScreen(onBack = { navController.navigate("dashboard") })
+            }
+            composable("settings") {
+                SettingsRoute(
+                    language = language,
+                    onLanguageChange = expenseViewModel::setLanguage,
+                    onPurchases = { navController.navigate("purchases") },
+                    onRecurring = { navController.navigate("recurring") }
+                )
+            }
+            composable("purchases") {
+                PurchaseManagementScreen(onBack = { navController.popBackStack() })
+            }
+            composable("recurring") {
+                RecurringManagementScreen(onBack = { navController.popBackStack() })
             }
         }
     }
 }
+
+@Composable
+private fun TransactionsRoute(viewModel: ExpenseViewModel) {
+    val transactions by viewModel.transactions.collectAsState()
+    val language by viewModel.language.collectAsState()
+    val ar = language == "ar"
+    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 16.dp)) {
+        Text(
+            if (ar) "كل المعاملات" else "All transactions",
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color(0xFF172B2A)
+        )
+        Text(
+            if (ar) "${transactions.size} عملية محفوظة على هذا الجهاز" else "${transactions.size} transactions stored on this device",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color(0xFF71817D)
+        )
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(transactions, key = { it.id }) { item ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                        Text(item.title, color = Color(0xFF172B2A), style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            moneyLabel(item.amountMinor, item.currencyCode, item.currencyExponent, ar),
+                            color = if (item.transactionType == "INCOME") Color(0xFF147D64) else Color(0xFFB45B52),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            if (ar) if (item.transactionType == "INCOME") "دخل" else "مصروف"
+                            else if (item.transactionType == "INCOME") "Income" else "Expense",
+                            color = Color(0xFF71817D),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsRoute(
+    language: String,
+    onLanguageChange: (String) -> Unit,
+    onPurchases: () -> Unit,
+    onRecurring: () -> Unit
+) {
+    val ar = language == "ar"
+    Column(
+        Modifier.fillMaxSize().padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(if (ar) "الإعدادات" else "Settings", style = MaterialTheme.typography.headlineSmall)
+        Text(if (ar) "اللغة" else "Language", style = MaterialTheme.typography.titleMedium)
+        TextButton(onClick = { onLanguageChange(if (ar) "en" else "ar") }) {
+            Text(if (ar) "English · LTR" else "العربية · RTL")
+        }
+        Text(if (ar) "الخصوصية" else "Privacy", style = MaterialTheme.typography.titleMedium)
+        Text(
+            if (ar) "تُحفظ بياناتك محلياً على الجهاز. لا يحتاج التطبيق إلى اتصال بالإنترنت للوظائف المالية الأساسية."
+            else "Your financial data stays on this device. Core finance features do not require an internet connection.",
+            color = Color(0xFF71817D)
+        )
+        TextButton(onClick = onPurchases) { Text(if (ar) "المشتريات المشتركة" else "Shared purchases") }
+        TextButton(onClick = onRecurring) { Text(if (ar) "العمليات المتكررة" else "Recurring transactions") }
+    }
+}
+
+private fun moneyLabel(minor: Long, code: String, exponent: Int, ar: Boolean): String =
+    NumberFormat.getCurrencyInstance(if (ar) Locale("ar", "EG") else Locale.US).apply {
+        currency = Currency.getInstance(code)
+        minimumFractionDigits = exponent
+        maximumFractionDigits = exponent
+    }.format(BigDecimal.valueOf(minor, exponent))
