@@ -29,7 +29,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DebtRepaymentEntity::class,
         LearnedKeyword::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 abstract class RofofDatabase : RoomDatabase() {
@@ -356,6 +356,15 @@ abstract class RofofDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE transactions ADD COLUMN recurringOccurrenceKey TEXT")
+                database.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_transactions_recurringOccurrenceKey ON transactions (recurringOccurrenceKey)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): RofofDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -363,7 +372,7 @@ abstract class RofofDatabase : RoomDatabase() {
                     RofofDatabase::class.java,
                     "rofof-local.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     .build()
                     .also { instance = it }
             }
