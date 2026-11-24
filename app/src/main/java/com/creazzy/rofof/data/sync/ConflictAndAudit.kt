@@ -24,7 +24,7 @@ object FinancialSyncConflictResolver {
 
 data class AuditEvent(val sequence: Long, val occurredAtEpochMillis: Long, val actor: String, val action: String, val entityType: String, val entityId: String, val payloadDigest: String, val previousHash: String, val hash: String)
 object FinancialAuditChain {
-    const val GENESIS = "0".repeat(64)
+    val GENESIS = "0".repeat(64)
     fun append(previous: AuditEvent?, sequence: Long, occurredAtEpochMillis: Long, actor: String, action: String, entityType: String, entityId: String, payloadDigest: String): AuditEvent {
         require(sequence == (previous?.sequence ?: 0L) + 1L)
         require(occurredAtEpochMillis >= (previous?.occurredAtEpochMillis ?: 0L))
