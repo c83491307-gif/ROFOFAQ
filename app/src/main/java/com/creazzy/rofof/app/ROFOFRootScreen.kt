@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import android.Manifest
@@ -63,7 +64,9 @@ fun ROFOFRootScreen(
     openQuickAdd: Boolean = false,
     onQuickAddConsumed: () -> Unit = {},
     openDashboard: Boolean = false,
-    onDashboardConsumed: () -> Unit = {}
+    onDashboardConsumed: () -> Unit = {},
+    appLockEnabled: Boolean = false,
+    onAppLockChange: (Boolean) -> Unit = {}
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -141,7 +144,9 @@ fun ROFOFRootScreen(
                     onRequestNotifications = requestNotificationPermission,
                     onExportCsv = requestCsvExport,
                     onTrash = { navController.navigate("trash") },
-                    onDebts = { navController.navigate("debts") }
+                    onDebts = { navController.navigate("debts") },
+                    appLockEnabled = appLockEnabled,
+                    onAppLockChange = onAppLockChange
                 )
             }
             composable("purchases") {
@@ -215,7 +220,9 @@ private fun SettingsRoute(
     onRequestNotifications: () -> Unit,
     onExportCsv: () -> Unit,
     onTrash: () -> Unit,
-    onDebts: () -> Unit
+    onDebts: () -> Unit,
+    appLockEnabled: Boolean,
+    onAppLockChange: (Boolean) -> Unit
 ) {
     val ar = language == "ar"
     Column(
@@ -238,6 +245,13 @@ private fun SettingsRoute(
         }
         TextButton(onClick = onDebts) {
             Text(if (ar) "الديون والسلف" else "Debts and loans")
+        }
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(if (ar) "قفل التطبيق بالبصمة / قفل الجهاز" else "Biometric / device app lock")
+            Switch(checked = appLockEnabled, onCheckedChange = onAppLockChange)
         }
         Text(if (ar) "الخصوصية" else "Privacy", style = MaterialTheme.typography.titleMedium)
         Text(
