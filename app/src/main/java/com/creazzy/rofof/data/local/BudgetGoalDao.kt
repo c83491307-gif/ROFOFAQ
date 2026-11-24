@@ -14,7 +14,7 @@ interface BudgetGoalDao {
                b.periodStartEpochMillis, b.periodEndEpochMillis,
                COALESCE((
                    SELECT SUM(t.amountMinor) FROM transactions t
-                   WHERE t.categoryId = b.categoryId
+                   WHERE t.isDeleted = 0 AND t.categoryId = b.categoryId
                      AND t.transactionType = 'EXPENSE'
                      AND t.currencyCode = b.currencyCode
                      AND t.currencyExponent = b.currencyExponent
