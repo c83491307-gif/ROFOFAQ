@@ -95,7 +95,7 @@ class MainActivity : FragmentActivity() {
                         openDashboard = openDashboardRequested,
                         onDashboardConsumed = { openDashboardRequested = false },
                         appLockEnabled = appLockEnabled,
-                        onAppLockChange = ::setAppLockEnabled
+                        onAppLockChange = ::updateAppLockEnabled
                     )
                 }
             }
@@ -114,7 +114,7 @@ class MainActivity : FragmentActivity() {
         super.onPause()
     }
 
-    private fun setAppLockEnabled(enabled: Boolean) {
+    private fun updateAppLockEnabled(enabled: Boolean) {
         if (enabled) {
             val authenticators = if (Build.VERSION.SDK_INT >= 30) {
                 BiometricManager.Authenticators.BIOMETRIC_STRONG or
