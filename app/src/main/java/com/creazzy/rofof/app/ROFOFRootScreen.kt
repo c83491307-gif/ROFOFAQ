@@ -25,7 +25,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -61,7 +60,9 @@ private val rootDestinations = listOf(
 @Composable
 fun ROFOFRootScreen(
     openQuickAdd: Boolean = false,
-    onQuickAddConsumed: () -> Unit = {}
+    onQuickAddConsumed: () -> Unit = {},
+    openDashboard: Boolean = false,
+    onDashboardConsumed: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -78,9 +79,10 @@ fun ROFOFRootScreen(
         }
     }
 
-    LaunchedEffect(openQuickAdd) {
-        if (openQuickAdd) {
+    LaunchedEffect(openQuickAdd, openDashboard) {
+        if (openQuickAdd || openDashboard) {
             navController.navigate("dashboard") { launchSingleTop = true }
+            if (openDashboard) onDashboardConsumed()
         }
     }
 
