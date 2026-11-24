@@ -48,6 +48,15 @@ interface PurchaseDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertExpenseLink(value: AllocationPersonalExpenseLinkEntity)
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertDebtLinks(values: List<PurchaseAllocationDebtLinkEntity>)
+
+    @Query("SELECT * FROM purchase_allocation_debt_links WHERE allocationId = :allocationId LIMIT 1")
+    suspend fun findDebtLink(allocationId: String): PurchaseAllocationDebtLinkEntity?
+
+    @Query("SELECT COUNT(*) FROM purchase_allocation_debt_links links INNER JOIN purchase_allocations a ON a.id = links.allocationId INNER JOIN purchase_items i ON i.id = a.itemId WHERE i.sessionId = :sessionId")
+    suspend fun debtLinkCountForSession(sessionId: String): Int
+
     @Query("SELECT * FROM purchase_sessions ORDER BY createdAtEpochMillis DESC")
     fun observeSessions(): Flow<List<PurchaseSessionEntity>>
 
@@ -78,11 +87,12 @@ interface PurchaseDao {
     @Query("""
         SELECT a.id AS allocationId, i.id AS itemId, i.title AS itemTitle, p.id AS participantId,
           p.displayName AS participantName, a.amountMinor AS amountMinor,
-          l.transactionId AS personalTransactionId
+          l.transactionId AS personalTransactionId, dl.debtId AS debtId
         FROM purchase_allocations a
         INNER JOIN purchase_items i ON i.id = a.itemId
         INNER JOIN purchase_participants p ON p.id = a.participantId
         LEFT JOIN allocation_personal_expense_links l ON l.allocationId = a.id
+        LEFT JOIN purchase_allocation_debt_links dl ON dl.allocationId = a.id
         WHERE i.sessionId = :sessionId
         ORDER BY i.createdAtEpochMillis, p.createdAtEpochMillis
     """)
@@ -94,7 +104,12 @@ interface PurchaseDao {
             INNER JOIN purchase_items i ON i.id = a.itemId
             WHERE i.sessionId = :sessionId AND a.participantId = p.id), 0) AS allocatedMinor,
           COALESCE((SELECT SUM(pay.amountMinor) FROM purchase_payments pay
-            WHERE pay.sessionId = :sessionId AND pay.participantId = p.id), 0) AS paidMinor
+            WHERE pay.sessionId = :sessionId AND pay.participantId = p.id), 0) AS paidMinor,
+          COALESCE((SELECT SUM(d.principalMinor) FROM debts d WHERE d.id IN (
+            SELECT DISTINCT links.debtId FROM purchase_allocation_debt_links links
+            INNER JOIN purchase_allocations a ON a.id = links.allocationId
+            INNER JOIN purchase_items i ON i.id = a.itemId
+            WHERE i.sessionId = :sessionId AND a.participantId = p.id)), 0) AS debtMinor
         FROM purchase_participants p
         WHERE p.sessionId = :sessionId AND p.isArchived = 0
         ORDER BY p.createdAtEpochMillis
