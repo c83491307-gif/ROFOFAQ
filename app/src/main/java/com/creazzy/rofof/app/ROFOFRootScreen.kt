@@ -16,10 +16,16 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -53,13 +59,30 @@ private val rootDestinations = listOf(
 )
 
 @Composable
-fun ROFOFRootScreen() {
+fun ROFOFRootScreen(
+    openQuickAdd: Boolean = false,
+    onQuickAddConsumed: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: "dashboard"
     val expenseViewModel: ExpenseViewModel = viewModel()
     val language by expenseViewModel.language.collectAsState()
     val isArabic = language == "ar"
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+    val requestNotificationPermission: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= 33) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    LaunchedEffect(openQuickAdd) {
+        if (openQuickAdd) {
+            navController.navigate("dashboard") { launchSingleTop = true }
+        }
+    }
 
     Scaffold(
         containerColor = Color(0xFFF4F7F5),
@@ -90,7 +113,11 @@ fun ROFOFRootScreen() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable("dashboard") {
-                DashboardScreen(expenseViewModel)
+                DashboardScreen(
+                    expenseViewModel,
+                    openAddInitially = openQuickAdd,
+                    onQuickAddConsumed = onQuickAddConsumed
+                )
             }
             composable("transactions") {
                 TransactionsRoute(expenseViewModel)
@@ -103,7 +130,8 @@ fun ROFOFRootScreen() {
                     language = language,
                     onLanguageChange = expenseViewModel::setLanguage,
                     onPurchases = { navController.navigate("purchases") },
-                    onRecurring = { navController.navigate("recurring") }
+                    onRecurring = { navController.navigate("recurring") },
+                    onRequestNotifications = requestNotificationPermission
                 )
             }
             composable("purchases") {
@@ -167,7 +195,8 @@ private fun SettingsRoute(
     language: String,
     onLanguageChange: (String) -> Unit,
     onPurchases: () -> Unit,
-    onRecurring: () -> Unit
+    onRecurring: () -> Unit,
+    onRequestNotifications: () -> Unit
 ) {
     val ar = language == "ar"
     Column(
@@ -178,6 +207,9 @@ private fun SettingsRoute(
         Text(if (ar) "اللغة" else "Language", style = MaterialTheme.typography.titleMedium)
         TextButton(onClick = { onLanguageChange(if (ar) "en" else "ar") }) {
             Text(if (ar) "English · LTR" else "العربية · RTL")
+        }
+        TextButton(onClick = onRequestNotifications) {
+            Text(if (ar) "تفعيل إشعارات الميزانية" else "Enable budget notifications")
         }
         Text(if (ar) "الخصوصية" else "Privacy", style = MaterialTheme.typography.titleMedium)
         Text(
