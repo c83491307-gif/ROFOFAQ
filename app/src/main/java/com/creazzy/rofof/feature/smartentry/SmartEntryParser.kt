@@ -36,6 +36,7 @@ class SmartEntryParser(
         val calculated = expression?.let(MathExpressionEvaluator::evaluate)
         val amount = calculated?.toPlainString()
             ?: AMOUNT.find(normalized)?.groupValues?.get(1)?.replace(',', '.')
+            ?: ArabicAmountWords.extract(normalized)?.toPlainString()
         val categoryMatch = allKeywords.entries
             .map { normalize(it.key) to it.value }
             .filter { (keyword, _) -> keyword.isNotBlank() && normalized.contains(keyword) }
