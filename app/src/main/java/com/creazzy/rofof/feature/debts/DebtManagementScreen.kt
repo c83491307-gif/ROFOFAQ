@@ -104,7 +104,7 @@ fun DebtManagementScreen(onBack: () -> Unit = {}, vm: DebtViewModel = viewModel(
         )
         OutlinedTextField(
             value = amount, onValueChange = { amount = it },
-            label = { Text("المبلغ (\${accounts.firstOrNull()?.currencyCode ?: "EGP"})") },
+            label = { Text("المبلغ (${accounts.firstOrNull()?.currencyCode ?: "EGP"})") },
             modifier = Modifier.fillMaxWidth()
         )
         Button(
