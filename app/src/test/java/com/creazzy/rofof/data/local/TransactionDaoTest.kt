@@ -21,6 +21,26 @@ class TransactionDaoTest {
     @Before fun createDatabase() { database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), RofofDatabase::class.java).allowMainThreadQueries().build() }
     @After fun closeDatabase() { database.close() }
 
+    @Test fun entrySuggestionsUseRecentComparableExpensesAndTopFourCategories() = runBlocking {
+        val finance = com.creazzy.rofof.data.repository.RoomFinanceRepository(database)
+        val food = finance.createCategory("Food", "EXPENSE")
+        val coffee = finance.createCategory("Coffee", "EXPENSE")
+        val dao = database.transactionDao()
+        repeat(6) { index ->
+            dao.insert(TransactionEntity("coffee-$index", "Coffee", "EXPENSE", (100L + index * 100L), "EGP", 2, "cash", coffee, (index + 1L) * 100L, (index + 1L) * 100L, null))
+        }
+        dao.insert(TransactionEntity("food-1", "Lunch", "EXPENSE", 900L, "EGP", 2, "cash", food, 900L, 900L, null))
+        dao.insert(TransactionEntity("coffee-usd", "Coffee USD", "EXPENSE", 99_000L, "USD", 2, "usd", coffee, 1_000L, 1_000L, null))
+        dao.insert(TransactionEntity("coffee-income", "Coffee refund", "INCOME", 50_000L, "EGP", 2, "cash", coffee, 1_100L, 1_100L, null))
+        dao.insert(TransactionEntity("coffee-trash", "Deleted coffee", "EXPENSE", 80_000L, "EGP", 2, "cash", coffee, 1_200L, 1_200L, null, isDeleted = true))
+
+        assertEquals(400L, dao.averageRecentExpenseMinor(coffee, "EGP", 2))
+        val top = dao.observeTopExpenseCategories().first()
+        assertEquals(2, top.size)
+        assertEquals(coffee, top.first().categoryId)
+        assertEquals(6L, top.first().transactionCount)
+    }
+
     @Test fun softDeletedTransactionLeavesLedgerTotalsAndCanBeRestoredForThirtyDays() = runBlocking {
         val dao = database.transactionDao()
         dao.insert(TransactionEntity("trash-expense", "Coffee", "EXPENSE", 2_500L, "EGP", 2, "cash", "coffee", 10L, 10L, null))
