@@ -61,12 +61,12 @@ class SmartEntryParser(
 
     private fun toAsciiDigits(value: String): String = buildString(value.length) {
         value.forEach { ch ->
+            if (ch == '\u066C') return@forEach
             append(
                 when (ch) {
                     in '٠'..'٩' -> ('0'.code + (ch.code - '٠'.code)).toChar()
                     in '۰'..'۹' -> ('0'.code + (ch.code - '۰'.code)).toChar()
                     '\u066B' -> '.'
-                    '\u066C' -> ','
                     else -> ch
                 }
             )
