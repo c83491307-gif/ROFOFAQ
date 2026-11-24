@@ -96,7 +96,7 @@ See [new enhancements and V6.0 input implementation](docs/implementation/NEW_15_
 
 Open **Actions → ROFOF Debug APK**, run the workflow manually or push to `feat/rofof-apk-integration`, then download the `ROFOF-Debug-APK` artifact only after a successful run. The build uses JDK 17, Android SDK 35 and Gradle 8.9 provided by GitHub Actions; it does not require Android Studio or a local Gradle installation. The broader Android CI workflow also runs unit/Robolectric tests, lint and emulator instrumentation. See [APK build and branch integration](docs/implementation/APK_BUILD_AND_BRANCH_INTEGRATION.md).
 
-A debug APK is not release-signed and is not a Play Store release. No release signing, publishing or deployment is configured here.
+A debug APK is not release-signed and is not a Play Store release. The separate [signed Release APK workflow](.github/workflows/signed-release.yml) builds and verifies a release-signed APK after the four documented repository Actions signing secrets are configured. It uploads a verified artifact only; it does not publish to Google Play.
 
 
 ## خارطة المنتج بالعربية
