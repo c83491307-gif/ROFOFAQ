@@ -71,6 +71,7 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     val managedAccounts by expenseViewModel.managedAccounts.collectAsState()
     val managedCategories by expenseViewModel.managedCategories.collectAsState()
     val totals by expenseViewModel.totals.collectAsState()
+    val safeToSpend by expenseViewModel.safeToSpend.collectAsState()
     val language by expenseViewModel.language.collectAsState()
     val financeActionMessage by expenseViewModel.financeActionMessage.collectAsState()
     val awarenessReview by expenseViewModel.awarenessReview.collectAsState()
@@ -142,6 +143,44 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             BalanceMetric(words.income, income, Green, language, Modifier.weight(1f))
                             BalanceMetric(words.expenses, expenses, Red, language, Modifier.weight(1f))
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        Text(
+                            if (isArabic) "المتبقي الآمن للإنفاق اليومي" else "Safe to spend today",
+                            color = Ink,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        if (safeToSpend.hasBudget) {
+                            Text(
+                                formatEgp(safeToSpend.dailySafeMinor, language),
+                                color = Green,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                if (isArabic) "بناءً على الميزانية والمصروفات المسجلة · ${safeToSpend.daysRemaining} يومًا متبقيًا"
+                                else "Based on recorded budget and expenses · ${safeToSpend.daysRemaining} days remaining",
+                                color = Muted,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        } else {
+                            Text(
+                                if (isArabic) "حدد ميزانيتك الشهرية أولاً لحساب المبلغ الآمن."
+                                else "Set a monthly budget to calculate your safe daily amount.",
+                                color = Muted,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
                 }
