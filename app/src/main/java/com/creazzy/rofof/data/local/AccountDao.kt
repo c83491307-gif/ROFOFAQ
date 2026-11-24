@@ -17,7 +17,7 @@ interface AccountDao {
                     WHEN transactions.transactionType = 'EXPENSE' THEN -transactions.amountMinor
                     ELSE 0
                 END)
-                FROM transactions WHERE transactions.accountId = accounts.id
+                FROM transactions WHERE transactions.accountId = accounts.id AND transactions.isDeleted = 0
             ), 0)
             + COALESCE((
                 SELECT SUM(transfers.amountMinor)
@@ -57,7 +57,7 @@ interface AccountDao {
             accounts.openingBalanceMinor
             + COALESCE((SELECT SUM(CASE WHEN transactionType = 'INCOME' THEN amountMinor
                 WHEN transactionType = 'EXPENSE' THEN -amountMinor ELSE 0 END)
-                FROM transactions WHERE accountId = accounts.id), 0)
+                FROM transactions WHERE accountId = accounts.id AND isDeleted = 0), 0)
             + COALESCE((SELECT SUM(amountMinor) FROM transfers WHERE toAccountId = accounts.id), 0)
             - COALESCE((SELECT SUM(amountMinor) FROM transfers WHERE fromAccountId = accounts.id), 0)
             AS balanceMinor
