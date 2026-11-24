@@ -9,6 +9,7 @@
 ## Branch reconciliation
 The following implementation deltas were reconciled into this branch:
 - Phase 7: monthly category report and transaction search UI, DAO queries, Room tests and documentation.
+- Phase 8: full-ledger CSV export with UTF-8 BOM, stable IDs/currency metadata/UTC timestamps, CSV quoting and spreadsheet formula-prefix neutralization; dashboard export action and tests were wired to the safe exporter.
 - Phase 9: explicit recurring draft approve/skip workflow, atomic repository, Room tests and documentation. The existing day-of-month scheduling was retained.
 - Phase 10 budget alert source and tests were already byte-for-byte present in the cumulative branch.
 - Existing CSV export, backup/debt foundations, local-first dashboard, shared purchases, budgets, recurring generation and V6 input enhancements were retained from the cumulative branch.
