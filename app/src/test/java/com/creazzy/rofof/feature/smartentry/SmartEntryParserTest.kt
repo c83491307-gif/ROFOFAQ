@@ -17,6 +17,12 @@ class SmartEntryParserTest {
         assertTrue(result.requiresReview)
     }
 
+    @Test fun parsesCommonSpokenArabicAmountsForVoiceEntry() {
+        val result = parser.parse("قهوة خمسين جنيه")
+        assertEquals("50", result.amountText)
+        assertEquals("Coffee", result.category?.categoryNameEnglish)
+    }
+
     @Test fun matchesLongestPhraseForWorkLunch() {
         val result = parser.parse("غداء عمل ١٢٠")
         assertEquals("Work", result.category?.categoryNameEnglish)
