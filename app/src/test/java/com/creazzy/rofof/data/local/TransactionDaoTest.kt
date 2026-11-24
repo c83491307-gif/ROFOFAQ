@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,6 +20,30 @@ class TransactionDaoTest {
     private lateinit var database: RofofDatabase
     @Before fun createDatabase() { database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), RofofDatabase::class.java).allowMainThreadQueries().build() }
     @After fun closeDatabase() { database.close() }
+
+    @Test fun softDeletedTransactionLeavesLedgerTotalsAndCanBeRestoredForThirtyDays() = runBlocking {
+        val dao = database.transactionDao()
+        dao.insert(TransactionEntity("trash-expense", "Coffee", "EXPENSE", 2_500L, "EGP", 2, "cash", "coffee", 10L, 10L, null))
+        dao.insert(TransactionEntity("visible-expense", "Lunch", "EXPENSE", 1_500L, "EGP", 2, "cash", "food", 20L, 20L, null))
+
+        assertEquals(1, dao.moveToTrash("trash-expense", 100L))
+        assertEquals(listOf("visible-expense"), dao.observeRecent().first().map { it.id })
+        assertEquals(1_500L, dao.observeMonthlyExpenseTotal("EGP", 2, 0L, 100L).first())
+        assertEquals(listOf("trash-expense"), dao.observeTrash().first().map { it.id })
+
+        assertEquals(1, dao.restoreFromTrash("trash-expense", 100L - 30L * 24L * 60L * 60L * 1000L))
+        assertEquals(2, dao.observeRecent().first().size)
+        assertTrue(dao.observeTrash().first().isEmpty())
+    }
+
+    @Test fun expiredTrashIsPurgedAndCannotBeRestored() = runBlocking {
+        val dao = database.transactionDao()
+        dao.insert(TransactionEntity("expired", "Old item", "EXPENSE", 100L, "EGP", 2, "cash", "general", 1L, 1L, null))
+        dao.moveToTrash("expired", 1_000L)
+        assertEquals(1, dao.purgeExpiredTrash(1_001L))
+        assertEquals(0, dao.restoreFromTrash("expired", 0L))
+        assertEquals(null, dao.findById("expired"))
+    }
 
     @Test fun incomeAndExpenseArePersistedInChronologicalOrder() = runBlocking {
         val dao = database.transactionDao()
