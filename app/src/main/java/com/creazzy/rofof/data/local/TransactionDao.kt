@@ -280,6 +280,9 @@ interface TransactionDao {
     """)
     fun observeExpenseSumsByCategory(): Flow<List<CategoryExpenseSum>>
 
+    @Query("SELECT * FROM transactions WHERE isDeleted = 0 ORDER BY occurredAtEpochMillis DESC, createdAtEpochMillis DESC")
+    suspend fun getAllTransactionsForCsvExport(): List<TransactionEntity>
+
     @Query("""
         SELECT transactions.occurredAtEpochMillis AS occurredAtEpochMillis,
             COALESCE(categories.name, '') AS categoryName,
