@@ -1,0 +1,74 @@
+name: ROFOF Unsigned Release APK
+
+on:
+  push:
+    branches:
+      - build/rofof-unsigned-release
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rofof-unsigned-release
+  cancel-in-progress: false
+
+jobs:
+  build-unsigned-release:
+    name: Build and verify unsigned Release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Run unit tests, lint and build unsigned Release APK
+        run: gradle --no-daemon --stacktrace testDebugUnitTest lintDebug assembleRelease
+      - name: Verify unsigned APK structure and alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -v 4 "$APK"
+          unzip -t "$APK"
+          if unzip -Z1 "$APK" | grep -Eq '^META-INF/[^/]+\\.(RSA|DSA|EC|SF)$'; then
+            echo "::error::Expected an unsigned APK but signature metadata was found."
+            exit 1
+          fi
+          sha256sum "$APK" | tee SHA256SUMS.txt
+          stat --printf='APK size: %s bytes\\n' "$APK"
+      - name: Stage unsigned release deliverables
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-output
+          cp app/build/outputs/apk/release/app-release-unsigned.apk release-output/ROFOF-release-unsigned.apk
+          cp SHA256SUMS.txt release-output/SHA256SUMS.txt
+          {
+            echo "Artifact: ROFOF unsigned Release APK"
+            echo "Source ref: build/rofof-unsigned-release"
+            echo "Source commit: $GITHUB_SHA"
+            echo "Package: com.creazzy.rofof"
+            echo "Signing: unsigned; signing secrets intentionally deferred"
+            echo "Verification: zipalign + ZIP integrity"
+            echo "Emulator: not run"
+          } > release-output/BUILD-VERIFICATION.txt
+      - name: Upload unsigned Release APK and verification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ROFOF-Unsigned-Release
+          path: release-output/*
+          if-no-files-found: error
+          retention-days: 30
