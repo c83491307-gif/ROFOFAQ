@@ -10,7 +10,8 @@ import androidx.room.PrimaryKey
         Index(value = ["occurredAtEpochMillis"]),
         Index(value = ["accountId", "occurredAtEpochMillis"]),
         Index(value = ["categoryId", "occurredAtEpochMillis"]),
-        Index(value = ["recurringOccurrenceKey"], unique = true)
+        Index(value = ["recurringOccurrenceKey"], unique = true),
+        Index(value = ["isDeleted", "occurredAtEpochMillis"])
     ]
 )
 data class TransactionEntity(
@@ -25,5 +26,7 @@ data class TransactionEntity(
     val occurredAtEpochMillis: Long,
     val createdAtEpochMillis: Long,
     val notes: String?,
-    val recurringOccurrenceKey: String? = null
+    val recurringOccurrenceKey: String? = null,
+    val isDeleted: Boolean = false,
+    val deletedAtEpochMillis: Long? = null
 )
