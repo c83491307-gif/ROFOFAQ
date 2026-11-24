@@ -73,6 +73,10 @@ fun ROFOFRootScreen(
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
+    val csvExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri -> uri?.let(expenseViewModel::exportTransactions) }
+    val requestCsvExport: () -> Unit = { csvExportLauncher.launch("ROFOF-transactions.csv") }
     val requestNotificationPermission: () -> Unit = {
         if (Build.VERSION.SDK_INT >= 33) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -133,7 +137,9 @@ fun ROFOFRootScreen(
                     onLanguageChange = expenseViewModel::setLanguage,
                     onPurchases = { navController.navigate("purchases") },
                     onRecurring = { navController.navigate("recurring") },
-                    onRequestNotifications = requestNotificationPermission
+                    onRequestNotifications = requestNotificationPermission,
+                    onExportCsv = requestCsvExport,
+                    onTrash = { navController.navigate("trash") }
                 )
             }
             composable("purchases") {
@@ -141,6 +147,9 @@ fun ROFOFRootScreen(
             }
             composable("recurring") {
                 RecurringManagementScreen(onBack = { navController.popBackStack() })
+            }
+            composable("trash") {
+                TrashRoute(expenseViewModel, onBack = { navController.popBackStack() })
             }
         }
     }
@@ -198,7 +207,9 @@ private fun SettingsRoute(
     onLanguageChange: (String) -> Unit,
     onPurchases: () -> Unit,
     onRecurring: () -> Unit,
-    onRequestNotifications: () -> Unit
+    onRequestNotifications: () -> Unit,
+    onExportCsv: () -> Unit,
+    onTrash: () -> Unit
 ) {
     val ar = language == "ar"
     Column(
@@ -213,6 +224,12 @@ private fun SettingsRoute(
         TextButton(onClick = onRequestNotifications) {
             Text(if (ar) "تفعيل إشعارات الميزانية" else "Enable budget notifications")
         }
+        TextButton(onClick = onExportCsv) {
+            Text(if (ar) "تصدير المعاملات إلى Excel / CSV" else "Export transactions to Excel / CSV")
+        }
+        TextButton(onClick = onTrash) {
+            Text(if (ar) "سلة المحذوفات · 30 يوماً" else "Recycle bin · 30 days")
+        }
         Text(if (ar) "الخصوصية" else "Privacy", style = MaterialTheme.typography.titleMedium)
         Text(
             if (ar) "تُحفظ بياناتك محلياً على الجهاز. لا يحتاج التطبيق إلى اتصال بالإنترنت للوظائف المالية الأساسية."
@@ -221,6 +238,36 @@ private fun SettingsRoute(
         )
         TextButton(onClick = onPurchases) { Text(if (ar) "المشتريات المشتركة" else "Shared purchases") }
         TextButton(onClick = onRecurring) { Text(if (ar) "العمليات المتكررة" else "Recurring transactions") }
+    }
+}
+
+@Composable
+private fun TrashRoute(viewModel: ExpenseViewModel, onBack: () -> Unit) {
+    val items by viewModel.trash.collectAsState()
+    val language by viewModel.language.collectAsState()
+    val ar = language == "ar"
+    Column(Modifier.fillMaxSize().padding(18.dp)) {
+        TextButton(onClick = onBack) { Text(if (ar) "رجوع" else "Back") }
+        Text(if (ar) "سلة المحذوفات" else "Recycle bin", style = MaterialTheme.typography.headlineSmall)
+        Text(if (ar) "تُحذف نهائياً بعد 30 يوماً" else "Items are permanently removed after 30 days")
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(items, key = { it.id }) { item ->
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(item.title, style = MaterialTheme.typography.titleMedium)
+                        Text(moneyLabel(item.amountMinor, item.currencyCode, item.currencyExponent, ar))
+                        androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { viewModel.restoreTransaction(item.id) }) {
+                                Text(if (ar) "استعادة" else "Restore")
+                            }
+                            TextButton(onClick = { viewModel.permanentlyDeleteTransaction(item.id) }) {
+                                Text(if (ar) "حذف نهائي" else "Delete permanently")
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
