@@ -109,11 +109,13 @@ class PurchaseDaoTest {
         assertEquals("OWED_TO_ME", debt.direction)
         assertEquals(3_000L, debt.principalMinor)
         assertTrue(debt.title.contains("Ahmed"))
-        assertEquals(debt.id, database.purchaseDao().findDebtLink(
-            database.purchaseDao().allocationsForItem(item).single { it.participantId == friend }.id
-        )?.debtId)
+        val friendAllocation = database.purchaseDao().allocationsForItem(item).single { it.participantId == friend }
+        assertEquals(debt.id, database.purchaseDao().findDebtLink(friendAllocation.id)?.debtId)
+        assertEquals(debt.id, database.purchaseDao().observeAllocationViews(session).first()
+            .single { it.allocationId == friendAllocation.id }.debtId)
 
         val settlement = database.purchaseDao().settlementSnapshot(session).associateBy { it.participantId }
+        assertEquals(3_000L, settlement[friend]?.debtMinor)
         assertEquals(0L, settlement[payer]?.balanceMinor)
         assertEquals(0L, settlement[friend]?.balanceMinor)
         purchases.closeAsSettled(session)
