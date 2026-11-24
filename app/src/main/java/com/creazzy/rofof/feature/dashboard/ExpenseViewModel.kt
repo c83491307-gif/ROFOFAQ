@@ -10,6 +10,9 @@ import com.creazzy.rofof.data.local.RofofDatabase
 import com.creazzy.rofof.data.repository.RoomTransactionRepository
 import com.creazzy.rofof.domain.model.LedgerTransaction
 import com.creazzy.rofof.feature.budgetgoals.BudgetOverrunNotifier
+import com.creazzy.rofof.feature.awareness.AwarenessAdvisor
+import com.creazzy.rofof.feature.awareness.AwarenessEntryReview
+import com.creazzy.rofof.feature.awareness.DatabaseSeeder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,6 +27,9 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val database = RofofDatabase.getInstance(application)
     private val financeRepository = RoomFinanceRepository(database)
     private val budgetOverrunNotifier = BudgetOverrunNotifier(application, database.budgetGoalDao())
+    private val awarenessAdvisor = AwarenessAdvisor(application, database)
+    private val _awarenessReview = MutableStateFlow<AwarenessEntryReview?>(null)
+    val awarenessReview = _awarenessReview.asStateFlow()
     private val repository = RoomTransactionRepository(
         database.transactionDao(),
         database.accountDao(),
@@ -34,6 +40,13 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val financeActionMessage = _financeActionMessage.asStateFlow()
 
     fun clearFinanceActionMessage() { _financeActionMessage.value = null }
+
+    fun analyzeSmartEntry(text: String, accountId: String, occurredAt: Long) {
+        viewModelScope.launch {
+            _awarenessReview.value = runCatching { awarenessAdvisor.review(text, accountId, occurredAt, language.value) }.getOrNull()
+        }
+    }
+    fun clearAwarenessReview() { _awarenessReview.value = null }
 
     private fun runFinanceAction(successMessage: String, action: suspend () -> Unit) {
         viewModelScope.launch {
@@ -133,7 +146,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "ar")
 
     init {
-        viewModelScope.launch { repository.ensureDefaults() }
+        viewModelScope.launch {
+            runCatching { DatabaseSeeder(database).seedFromAssets(getApplication()) }
+            repository.ensureDefaults()
+        }
     }
 
     fun setLanguage(value: String) {

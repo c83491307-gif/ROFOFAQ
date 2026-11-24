@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.creazzy.rofof.domain.model.LedgerTransaction
 import com.creazzy.rofof.feature.smartentry.SmartEntryParser
+import com.creazzy.rofof.feature.awareness.AwarenessEntryReview
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -72,6 +73,7 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     val totals by expenseViewModel.totals.collectAsState()
     val language by expenseViewModel.language.collectAsState()
     val financeActionMessage by expenseViewModel.financeActionMessage.collectAsState()
+    val awarenessReview by expenseViewModel.awarenessReview.collectAsState()
     val isArabic = language == "ar"
     val direction = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
     val words = if (isArabic) Arabic else English
@@ -235,6 +237,9 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
             language = language,
             accounts = accounts,
             onDismiss = { showAdd = false },
+            onAnalyze = { command, accountId, occurredAt -> expenseViewModel.analyzeSmartEntry(command, accountId, occurredAt) },
+            awarenessReview = awarenessReview,
+            onClearReview = expenseViewModel::clearAwarenessReview,
             onSave = { title, amount, category, type, accountId, occurredAt ->
                 expenseViewModel.addTransaction(title, amount, category, type, accountId, occurredAt)
                 showAdd = false
@@ -366,6 +371,9 @@ private fun AddTransactionDialog(
     accounts: List<com.creazzy.rofof.data.local.AccountBalance>,
     onDismiss: () -> Unit,
     onSave: (String, String, String, String, String, Long) -> Unit,
+    onAnalyze: (String, String, Long) -> Unit = { _, _, _ -> },
+    awarenessReview: AwarenessEntryReview? = null,
+    onClearReview: () -> Unit = {},
     initialTransaction: LedgerTransaction? = null,
     initialCategoryName: String = ""
 ) {
@@ -376,6 +384,7 @@ private fun AddTransactionDialog(
     var category by remember(initialTransaction?.id) { mutableStateOf(initialCategoryName) }
     var smartCommand by remember(initialTransaction?.id) { mutableStateOf("") }
     var smartSuggestion by remember(initialTransaction?.id) { mutableStateOf<String?>(null) }
+    var appliedReviewText by remember(initialTransaction?.id) { mutableStateOf<String?>(null) }
     val smartParser = remember { SmartEntryParser() }
     var type by remember(initialTransaction?.id) { mutableStateOf(initialTransaction?.transactionType ?: "EXPENSE") }
     var accountId by remember(accounts, initialTransaction?.id) { mutableStateOf(initialTransaction?.accountId ?: accounts.firstOrNull()?.id.orEmpty()) }
@@ -408,7 +417,7 @@ private fun AddTransactionDialog(
                 if (initialTransaction == null) {
                     OutlinedTextField(
                         value = smartCommand,
-                        onValueChange = { smartCommand = it; smartSuggestion = null },
+                        onValueChange = { smartCommand = it; smartSuggestion = null; appliedReviewText = null; onClearReview() },
                         label = { Text(if (language == "ar") "اكتب العملية بلغتك" else "Describe the transaction") },
                         placeholder = { Text(if (language == "ar") "مثال: قهوة ٥٠ أو استلمت راتب ١٥٠٠٠" else "Example: coffee 50 or received salary 15000") },
                         supportingText = { Text(if (language == "ar") "تحليل محلي على الجهاز — لا يتم الحفظ قبل مراجعتك" else "Parsed locally on this device — nothing is saved until you review") },
@@ -416,42 +425,34 @@ private fun AddTransactionDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
                     TextButton(
-                        onClick = {
-                            val parsed = smartParser.parse(smartCommand)
-                            val suggestedAmount = parsed.amountText
-                            if (suggestedAmount == null) {
-                                smartSuggestion = if (language == "ar") "لم أتعرف على مبلغ. أدخله يدويًا أو أعد كتابة الوصف." else "No amount found. Enter it manually or rephrase the description."
-                            } else {
-                                amount = suggestedAmount
-                                type = parsed.transactionType
-                                parsed.category?.let { suggestion ->
-                                    category = if (language == "ar") suggestion.categoryNameArabic else suggestion.categoryNameEnglish
+                        onClick = { appliedReviewText = null; onAnalyze(smartCommand, accountId, datePickerState.selectedDateMillis ?: System.currentTimeMillis()) },
+                        enabled = smartCommand.isNotBlank() && accountId.isNotBlank()
+                    ) { Text(if (language == "ar") "حلّل وراجع" else "Analyze & review") }
+                    awarenessReview?.takeIf { it.sourceText == smartCommand }?.let { review ->
+                        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F6F2)), shape = RoundedCornerShape(14.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(if (language == "ar") "مراجعة الاقتراح المحلي" else "Local suggestion review", fontWeight = FontWeight.Bold, color = Ink)
+                                Text((if (language == "ar") "النوع: " else "Type: ") + if (review.transactionType == "INCOME") words.income else words.expenses)
+                                Text((if (language == "ar") "المبلغ: " else "Amount: ") + (review.amountText ?: "—"))
+                                Text((if (language == "ar") "الفئة: " else "Category: ") + (review.categoryLabel ?: if (language == "ar") "غير معروفة — اختر فئة يدويًا" else "Unknown — choose manually"))
+                                review.ruleMatches.forEach { match ->
+                                    Text(if (language == "ar") match.action.messageAr else match.action.messageEn,
+                                        color = if (match.action.severity == "CRITICAL" || match.action.severity == "WARNING") Red else Muted,
+                                        style = MaterialTheme.typography.bodySmall)
                                 }
-                                val titleCandidate = smartCommand.replace(
-                                    Regex("""[٠-٩۰-۹0-9]+([٫.,][٠-٩۰-۹0-9]+)?"""), ""
-                                ).trim()
-                                if (titleCandidate.isNotBlank()) title = titleCandidate
-                                val categoryLabel = parsed.category?.let {
-                                    if (language == "ar") it.categoryNameArabic else it.categoryNameEnglish
-                                } ?: if (language == "ar") "فئة غير محددة" else "Unclassified category"
-                                smartSuggestion = if (language == "ar") {
-                                    "اقتراح للمراجعة: ${if (type == "INCOME") "دخل" else "مصروف"} · ${suggestedAmount} · $categoryLabel"
-                                } else {
-                                    "Review suggestion: ${if (type == "INCOME") "Income" else "Expense"} · ${suggestedAmount} · $categoryLabel"
+                                Button(onClick = {
+                                    review.amountText?.let { amount = it }
+                                    type = review.transactionType
+                                    review.categoryName?.let { category = it }
+                                    val cleaned = smartCommand.replace(Regex("""[٠-٩۰-۹0-9]+([٫.,][٠-٩۰-۹0-9]+)?"""), "").trim()
+                                    if (cleaned.isNotBlank()) title = cleaned
+                                    appliedReviewText = smartCommand
+                                }, colors = ButtonDefaults.buttonColors(containerColor = Green), modifier = Modifier.fillMaxWidth()) {
+                                    Text(if (language == "ar") "اعتماد المراجعة وتطبيق الاقتراح" else "Accept review and apply suggestion")
                                 }
                             }
-                        },
-                        enabled = smartCommand.isNotBlank()
-                    ) { Text(if (language == "ar") "حلّل واقترح" else "Analyze & suggest") }
-                    smartSuggestion?.let { suggestion ->
-                        Text(
-                            suggestion,
-                            color = if (suggestion.startsWith(if (language == "ar") "اقتراح" else "Review")) Green else Red,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        }
                     }
-                }
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(words.transactionName) }, singleLine = true)
                 OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text(words.amount) }, supportingText = { Text(words.amountHint) }, singleLine = true)
                 OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text(words.category) }, singleLine = true)
@@ -475,7 +476,9 @@ private fun AddTransactionDialog(
         confirmButton = {
             Button(
                 onClick = { onSave(title, amount, category, type, accountId, datePickerState.selectedDateMillis ?: System.currentTimeMillis()) },
-                enabled = title.isNotBlank() && amount.isNotBlank() && accountId.isNotBlank(),
+                enabled = title.isNotBlank() && amount.isNotBlank() && accountId.isNotBlank() &&
+                    (smartCommand.isBlank() || appliedReviewText == smartCommand) &&
+                    (awarenessReview?.takeIf { it.sourceText == smartCommand }?.categoryKnown != false || category.isNotBlank()),
                 colors = ButtonDefaults.buttonColors(containerColor = Green)
             ) { Text(words.save) }
         },
