@@ -21,7 +21,7 @@ object SmartPasteParser {
         val normalized = Normalizer.normalize(clean, Normalizer.Form.NFKC).lowercase()
         if (bankCues.none { normalized.contains(it) }) return null
         val merchant = clean.replace(amount, " ")
-            .replace(Regex("(?i)تم خصم|تم سحب|من حسابك|من حساب|لدى|شراء|خصم|سحب|جنيه|جنيهات|egp|ج\\\\.م"), " ")
+            .replace(Regex("(?i)تم خصم|تم سحب|من حسابك|من حساب|لدى|شراء|خصم|سحب|جنيه|جنيهات|egp|ج\\.م"), " ")
             .replace(Regex("\\s+"), " ").trim().takeIf { it.length in 2..80 }
         val parsed = parser.parse(clean)
         return SmartPasteSuggestion(amount, merchant, parsed.copy(amountText = amount), clean.take(180))
