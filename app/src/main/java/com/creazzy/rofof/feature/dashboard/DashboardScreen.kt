@@ -453,6 +453,7 @@ private fun AddTransactionDialog(
                             }
                         }
                     }
+                }
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(words.transactionName) }, singleLine = true)
                 OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text(words.amount) }, supportingText = { Text(words.amountHint) }, singleLine = true)
                 OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text(words.category) }, singleLine = true)
