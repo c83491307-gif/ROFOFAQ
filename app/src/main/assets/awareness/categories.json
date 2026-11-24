@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "categories": [
+    {"id":"awareness-expense-food","name":"Food","transactionType":"EXPENSE"},
+    {"id":"awareness-expense-coffee","name":"Coffee","transactionType":"EXPENSE"},
+    {"id":"awareness-expense-transport","name":"Transport","transactionType":"EXPENSE"},
+    {"id":"awareness-expense-fuel","name":"Fuel","transactionType":"EXPENSE"},
+    {"id":"awareness-expense-bills","name":"Bills","transactionType":"EXPENSE"},
+    {"id":"awareness-expense-rent","name":"Rent","transactionType":"EXPENSE"},
+    {"id":"awareness-expense-health","name":"Health","transactionType":"EXPENSE"},
+    {"id":"awareness-expense-education","name":"Education","transactionType":"EXPENSE"},
+    {"id":"awareness-expense-shopping","name":"Shopping","transactionType":"EXPENSE"},
+    {"id":"awareness-expense-entertainment","name":"Entertainment","transactionType":"EXPENSE"},
+    {"id":"awareness-expense-family","name":"Family","transactionType":"EXPENSE"},
+    {"id":"awareness-expense-charity","name":"Charity","transactionType":"EXPENSE"},
+    {"id":"awareness-expense-work","name":"Work","transactionType":"EXPENSE"},
+    {"id":"awareness-income-salary","name":"Salary","transactionType":"INCOME"},
+    {"id":"awareness-income-freelance","name":"Freelance","transactionType":"INCOME"},
+    {"id":"awareness-income-gift","name":"Gift","transactionType":"INCOME"}
+  ]
+}
