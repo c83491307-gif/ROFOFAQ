@@ -20,10 +20,12 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class DatabaseSeederTest {
     private lateinit var database: RofofDatabase
+    private lateinit var context: Context
 
     @Before fun setUp() {
+        context = ApplicationProvider.getApplicationContext()
         database = Room.inMemoryDatabaseBuilder(
-            ApplicationProvider.getApplicationContext<Context>(),
+            context,
             RofofDatabase::class.java
         ).allowMainThreadQueries().build()
     }
@@ -31,14 +33,15 @@ class DatabaseSeederTest {
     @After fun tearDown() = database.close()
 
     @Test fun seedIsIdempotentAndOnlyCreatesCategories() = runBlocking {
+        val categories = RuleLoader().load(context).categories
         val seeder = DatabaseSeeder(database)
-        val first = seeder.seed(DatabaseSeeder.DEFAULT_CATEGORIES, 123L)
-        val second = seeder.seed(DatabaseSeeder.DEFAULT_CATEGORIES, 456L)
+        val first = seeder.seed(categories, 123L)
+        val second = seeder.seed(categories, 456L)
 
-        assertEquals(DatabaseSeeder.DEFAULT_CATEGORIES.size, first.inserted)
+        assertEquals(categories.size, first.inserted)
         assertEquals(0, first.alreadyPresent)
         assertEquals(0, second.inserted)
-        assertEquals(DatabaseSeeder.DEFAULT_CATEGORIES.size, second.alreadyPresent)
+        assertEquals(categories.size, second.alreadyPresent)
         assertNotNull(database.categoryDao().findById("awareness-expense-food"))
         assertEquals(null, database.accountDao().findById("awareness-default-account"))
     }
@@ -66,5 +69,10 @@ class DatabaseSeederTest {
         val invalid = listOf(SeedCategory("bad", "Bad", "TRANSFER"))
         org.junit.Assert.assertTrue(runCatching { DatabaseSeeder(database).seed(invalid, 1L) }.isFailure)
         assertEquals(null, database.categoryDao().findById("bad"))
+    }
+
+    @Test fun seedFromAssetsUsesBundledCategoryCatalog() = runBlocking {
+        val result = DatabaseSeeder(database).seedFromAssets(context, 321L)
+        assertEquals(16, result.inserted)
     }
 }

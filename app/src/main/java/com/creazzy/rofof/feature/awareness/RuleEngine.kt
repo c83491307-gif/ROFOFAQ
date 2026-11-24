@@ -1,5 +1,7 @@
 package com.creazzy.rofof.feature.awareness
 
+import java.math.BigDecimal
+
 /**
  * Deterministic, offline rule evaluator. It only reads supplied facts and
  * returns suggestions; it never writes transactions or changes budgets.
@@ -47,14 +49,14 @@ class RuleEngine {
     }
 
     private fun compare(left: Any?, right: Any?): Int? {
-        val leftNumber = left.asFiniteDouble() ?: return null
-        val rightNumber = right.asFiniteDouble() ?: return null
+        val leftNumber = left.asBigDecimal() ?: return null
+        val rightNumber = right.asBigDecimal() ?: return null
         return leftNumber.compareTo(rightNumber)
     }
 
-    private fun Any?.asFiniteDouble(): Double? = when (this) {
-        is Number -> toDouble().takeIf { it.isFinite() }
-        is String -> trim().toDoubleOrNull()?.takeIf { it.isFinite() }
+    private fun Any?.asBigDecimal(): BigDecimal? = when (this) {
+        is BigDecimal -> this
+        is Number, is String -> runCatching { BigDecimal(toString().trim()) }.getOrNull()
         else -> null
     }
 }

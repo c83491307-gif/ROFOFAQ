@@ -41,8 +41,7 @@ class DatabaseSeeder(
         database.withTransaction {
             val dao = database.categoryDao()
             categories.forEach { seed ->
-                val existing = dao.findByNameAndType(seed.name, seed.transactionType)
-                if (existing != null) {
+                if (dao.findByNameAndType(seed.name, seed.transactionType) != null) {
                     alreadyPresent++
                 } else {
                     dao.insertIfAbsent(
@@ -66,24 +65,5 @@ class DatabaseSeeder(
     companion object {
         const val EXPENSE = "EXPENSE"
         const val INCOME = "INCOME"
-
-        val DEFAULT_CATEGORIES = listOf(
-            SeedCategory("awareness-expense-food", "Food", EXPENSE),
-            SeedCategory("awareness-expense-coffee", "Coffee", EXPENSE),
-            SeedCategory("awareness-expense-transport", "Transport", EXPENSE),
-            SeedCategory("awareness-expense-fuel", "Fuel", EXPENSE),
-            SeedCategory("awareness-expense-bills", "Bills", EXPENSE),
-            SeedCategory("awareness-expense-rent", "Rent", EXPENSE),
-            SeedCategory("awareness-expense-health", "Health", EXPENSE),
-            SeedCategory("awareness-expense-education", "Education", EXPENSE),
-            SeedCategory("awareness-expense-shopping", "Shopping", EXPENSE),
-            SeedCategory("awareness-expense-entertainment", "Entertainment", EXPENSE),
-            SeedCategory("awareness-expense-family", "Family", EXPENSE),
-            SeedCategory("awareness-expense-charity", "Charity", EXPENSE),
-            SeedCategory("awareness-expense-work", "Work", EXPENSE),
-            SeedCategory("awareness-income-salary", "Salary", INCOME),
-            SeedCategory("awareness-income-freelance", "Freelance", INCOME),
-            SeedCategory("awareness-income-gift", "Gift", INCOME)
-        )
     }
 }
