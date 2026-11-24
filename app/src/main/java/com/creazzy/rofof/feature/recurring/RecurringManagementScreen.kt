@@ -137,16 +137,17 @@ fun RecurringManagementScreen(onBack: () -> Unit) {
         Button(onClick = { vm.addMonthlyExpense(title, amount, dayOfMonth); title = ""; amount = "" }, enabled = title.isNotBlank() && amount.isNotBlank() && (dayOfMonth.toIntOrNull()?.let { it in 1..31 } == true)) {
             Text("إضافة قاعدة شهرية · Add monthly rule")
         }
-        Button(onClick = { vm.generateDueDrafts() }, modifier = Modifier.fillMaxWidth()) {
-            Text("التنفيذ التلقائي اليومي مفعّل · Automatic daily execution enabled")
-        }
+        Text(
+            "تُسجّل العمليات المستحقة تلقائياً في الخلفية يومياً · Due transactions are posted automatically in the background",
+            modifier = Modifier.fillMaxWidth()
+        )
         Text("القواعد · Rules (${rules.size})")
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(rules, key = { it.id }) { rule ->
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp)) {
                         Text(rule.title)
-                        Text("EGP ${BigDecimal.valueOf(rule.amountMinor, rule.currencyExponent).toPlainString()} · ${rule.intervalType}")
+                        Text("EGP ${BigDecimal.valueOf(rule.amountMinor, rule.currencyExponent).toPlainString()} · ${rule.intervalType} · Day ${rule.dayOfMonth}")
                         Text(if (rule.isActive) "Active" else "Paused")
                     }
                 }
