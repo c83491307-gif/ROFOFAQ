@@ -17,11 +17,22 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.UUID
+import java.time.LocalDate
+import java.time.ZoneId
+
+data class SafeToSpendState(
+    val monthlyBudgetMinor: Long,
+    val monthlyExpensesMinor: Long,
+    val daysRemaining: Int,
+    val dailySafeMinor: Long,
+    val hasBudget: Boolean
+)
 
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
     private val database = RofofDatabase.getInstance(application)
@@ -93,6 +104,31 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             SharingStarted.WhileSubscribed(5_000),
             com.creazzy.rofof.data.local.TransactionTotals(0L, 0L)
         )
+
+    private val currentMonth = LocalDate.now()
+    private val currentMonthStart = currentMonth.withDayOfMonth(1)
+    private val nextMonthStart = currentMonthStart.plusMonths(1)
+    private val monthStartMillis = currentMonthStart.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    private val nextMonthStartMillis = nextMonthStart.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    private val daysRemainingInMonth = (currentMonth.lengthOfMonth() - currentMonth.dayOfMonth + 1).coerceAtLeast(1)
+
+    val safeToSpend = combine(
+        database.budgetGoalDao().observeMonthlyBudgetTotal("EGP", 2, monthStartMillis, nextMonthStartMillis),
+        database.transactionDao().observeMonthlyExpenseTotal("EGP", 2, monthStartMillis, nextMonthStartMillis)
+    ) { budget, expenses ->
+        val remaining = (budget - expenses).coerceAtLeast(0L)
+        SafeToSpendState(
+            monthlyBudgetMinor = budget,
+            monthlyExpensesMinor = expenses,
+            daysRemaining = daysRemainingInMonth,
+            dailySafeMinor = if (budget > 0L) remaining / daysRemainingInMonth else 0L,
+            hasBudget = budget > 0L
+        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        SafeToSpendState(0L, 0L, daysRemainingInMonth, 0L, false)
+    )
 
     fun createAccount(name: String, currencyCode: String, exponent: Int, openingBalance: String) {
         val minor = runCatching {
