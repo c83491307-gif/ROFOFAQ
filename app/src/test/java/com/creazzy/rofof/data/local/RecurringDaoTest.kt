@@ -51,6 +51,26 @@ class RecurringDaoTest {
         assertTrue(database.transactionDao().observeRecent().first().isEmpty())
     }
 
+    @Test fun recurringTransactionOccurrenceKeyPreventsDuplicateLedgerRows() = runBlocking {
+        val first = TransactionEntity(
+            id = "auto-rent-1",
+            title = "Rent",
+            transactionType = "EXPENSE",
+            amountMinor = 25_000L,
+            currencyCode = "EGP",
+            currencyExponent = 2,
+            accountId = "default-cash",
+            categoryId = "default-expense-general",
+            occurredAtEpochMillis = 10_000L,
+            createdAtEpochMillis = 10_000L,
+            notes = "automatic",
+            recurringOccurrenceKey = "rent-rule@10000"
+        )
+        assertTrue(database.transactionDao().insertRecurringIfAbsent(first) > 0L)
+        assertEquals(-1L, database.transactionDao().insertRecurringIfAbsent(first.copy(id = "duplicate-id")))
+        assertEquals(1, database.transactionDao().observeRecent().first().size)
+    }
+
     @Test fun draftStatusCanOnlyTransitionFromDraft() = runBlocking {
         val rule = RecurringRuleEntity(
             "utility-rule", "Utilities", "EXPENSE", 5_000L, "EGP", 2,
