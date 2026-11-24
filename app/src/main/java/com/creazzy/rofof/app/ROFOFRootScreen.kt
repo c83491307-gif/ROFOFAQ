@@ -36,6 +36,7 @@ import androidx.navigation.compose.rememberNavController
 import com.creazzy.rofof.feature.budgetgoals.BudgetGoalsScreen
 import com.creazzy.rofof.feature.dashboard.DashboardScreen
 import com.creazzy.rofof.feature.dashboard.ExpenseViewModel
+import com.creazzy.rofof.feature.debts.DebtManagementScreen
 import com.creazzy.rofof.feature.purchases.PurchaseManagementScreen
 import com.creazzy.rofof.feature.recurring.RecurringManagementScreen
 import java.math.BigDecimal
@@ -139,7 +140,8 @@ fun ROFOFRootScreen(
                     onRecurring = { navController.navigate("recurring") },
                     onRequestNotifications = requestNotificationPermission,
                     onExportCsv = requestCsvExport,
-                    onTrash = { navController.navigate("trash") }
+                    onTrash = { navController.navigate("trash") },
+                    onDebts = { navController.navigate("debts") }
                 )
             }
             composable("purchases") {
@@ -150,6 +152,9 @@ fun ROFOFRootScreen(
             }
             composable("trash") {
                 TrashRoute(expenseViewModel, onBack = { navController.popBackStack() })
+            }
+            composable("debts") {
+                DebtManagementScreen(onBack = { navController.popBackStack() })
             }
         }
     }
@@ -209,7 +214,8 @@ private fun SettingsRoute(
     onRecurring: () -> Unit,
     onRequestNotifications: () -> Unit,
     onExportCsv: () -> Unit,
-    onTrash: () -> Unit
+    onTrash: () -> Unit,
+    onDebts: () -> Unit
 ) {
     val ar = language == "ar"
     Column(
@@ -229,6 +235,9 @@ private fun SettingsRoute(
         }
         TextButton(onClick = onTrash) {
             Text(if (ar) "سلة المحذوفات · 30 يوماً" else "Recycle bin · 30 days")
+        }
+        TextButton(onClick = onDebts) {
+            Text(if (ar) "الديون والسلف" else "Debts and loans")
         }
         Text(if (ar) "الخصوصية" else "Privacy", style = MaterialTheme.typography.titleMedium)
         Text(
