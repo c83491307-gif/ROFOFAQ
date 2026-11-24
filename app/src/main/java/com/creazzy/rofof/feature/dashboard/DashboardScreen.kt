@@ -31,6 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,7 +65,11 @@ private val Green = Color(0xFF147D64)
 private val Red = Color(0xFFB45B52)
 
 @Composable
-fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
+fun DashboardScreen(
+    expenseViewModel: ExpenseViewModel = viewModel(),
+    openAddInitially: Boolean = false,
+    onQuickAddConsumed: () -> Unit = {}
+) {
     val transactions by expenseViewModel.transactions.collectAsState()
     val categories by expenseViewModel.categories.collectAsState()
     val learnedKeywordSuggestions by expenseViewModel.learnedKeywordSuggestions.collectAsState()
@@ -85,6 +90,13 @@ fun DashboardScreen(expenseViewModel: ExpenseViewModel = viewModel()) {
     var showCategories by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<LedgerTransaction?>(null) }
     var pendingEdit by remember { mutableStateOf<LedgerTransaction?>(null) }
+
+    LaunchedEffect(openAddInitially) {
+        if (openAddInitially) {
+            showAdd = true
+            onQuickAddConsumed()
+        }
+    }
 
     val income = totals.incomeMinor
     val expenses = totals.expenseMinor
