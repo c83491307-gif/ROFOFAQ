@@ -511,6 +511,8 @@ private fun AddTransactionDialog(
     var accountMenu by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialTransaction?.occurredAtEpochMillis ?: System.currentTimeMillis())
+    val selectedCurrencyExponent = accounts.firstOrNull { it.id == accountId }?.currencyExponent ?: 2
+    val amountValid = AmountInputParser.toMinorUnits(amount, selectedCurrencyExponent) != null
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (initialTransaction == null) words.newTransaction else words.edit, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
@@ -592,8 +594,6 @@ private fun AddTransactionDialog(
                     }
                 }
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(words.transactionName) }, singleLine = true)
-                val selectedCurrencyExponent = accounts.firstOrNull { it.id == accountId }?.currencyExponent ?: 2
-                val amountValid = AmountInputParser.toMinorUnits(amount, selectedCurrencyExponent) != null
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { value ->
