@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.UUID
@@ -359,6 +360,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 }
                 ExpenseWidgetUpdater.refresh(getApplication())
                 _financeActionMessage.value = if (language.value == "ar") "تم حفظ العملية بنجاح." else "Transaction saved."
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (error: Throwable) {
                 _financeActionMessage.value = localizeFinanceError(error.message.orEmpty())
             } finally {
