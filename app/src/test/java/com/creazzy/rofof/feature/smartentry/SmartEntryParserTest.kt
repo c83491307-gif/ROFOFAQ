@@ -40,8 +40,12 @@ class SmartEntryParserTest {
         assertNotNull(result.category)
     }
 
+    @Test fun removesArabicThousandsSeparatorWithoutChangingValue() {
+        assertEquals("1200", parser.parse("تاكسي ١٬٢٠٠").amountText)
+    }
+
     @Test fun supportsPersianAndArabicIndicDigits() {
-        assertEquals("125.50", parser.parse("تاكسي ۱۲۵٫۵۰").amountText?.replace('٫', '.'))
+        assertEquals("125.50", parser.parse("تاكسي ۱۲۵٫۵۰").amountText)
         assertEquals("25", parser.parse("تاكسي ٢٥").amountText)
     }
 }
