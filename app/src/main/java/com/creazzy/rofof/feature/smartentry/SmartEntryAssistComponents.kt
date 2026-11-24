@@ -61,7 +61,7 @@ fun SmartPasteAction(onAccept: (SmartPasteSuggestion) -> Unit, modifier: Modifie
         AlertDialog(
             onDismissRequest = { pending = null },
             title = { Text("Review pasted transaction") },
-            text = { Text("\${suggestion.amountText} · \${suggestion.merchantText ?: suggestion.parsedEntry.category?.categoryNameArabic ?: "Uncategorized"}") },
+            text = { Text(suggestion.amountText + " · " + (suggestion.merchantText ?: suggestion.parsedEntry.category?.categoryNameArabic ?: "Uncategorized")) },
             confirmButton = { TextButton(onClick = { onAccept(suggestion); pending = null }) { Text("Review and continue") } },
             dismissButton = { TextButton(onClick = { pending = null }) { Text("Cancel") } }
         )
