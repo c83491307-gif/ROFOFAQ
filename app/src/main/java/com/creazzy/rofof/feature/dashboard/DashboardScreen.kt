@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.creazzy.rofof.domain.model.LedgerTransaction
+import com.creazzy.rofof.feature.smartentry.SmartEntryParser
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -373,6 +374,9 @@ private fun AddTransactionDialog(
         mutableStateOf(initialTransaction?.let { BigDecimal.valueOf(it.amountMinor, it.currencyExponent).toPlainString() }.orEmpty())
     }
     var category by remember(initialTransaction?.id) { mutableStateOf(initialCategoryName) }
+    var smartCommand by remember(initialTransaction?.id) { mutableStateOf("") }
+    var smartSuggestion by remember(initialTransaction?.id) { mutableStateOf<String?>(null) }
+    val smartParser = remember { SmartEntryParser() }
     var type by remember(initialTransaction?.id) { mutableStateOf(initialTransaction?.transactionType ?: "EXPENSE") }
     var accountId by remember(accounts, initialTransaction?.id) { mutableStateOf(initialTransaction?.accountId ?: accounts.firstOrNull()?.id.orEmpty()) }
     var accountMenu by remember { mutableStateOf(false) }
@@ -400,6 +404,53 @@ private fun AddTransactionDialog(
                         ),
                         modifier = Modifier.weight(1f)
                     ) { Text(words.income) }
+                }
+                if (initialTransaction == null) {
+                    OutlinedTextField(
+                        value = smartCommand,
+                        onValueChange = { smartCommand = it; smartSuggestion = null },
+                        label = { Text(if (language == "ar") "اكتب العملية بلغتك" else "Describe the transaction") },
+                        placeholder = { Text(if (language == "ar") "مثال: قهوة ٥٠ أو استلمت راتب ١٥٠٠٠" else "Example: coffee 50 or received salary 15000") },
+                        supportingText = { Text(if (language == "ar") "تحليل محلي على الجهاز — لا يتم الحفظ قبل مراجعتك" else "Parsed locally on this device — nothing is saved until you review") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    TextButton(
+                        onClick = {
+                            val parsed = smartParser.parse(smartCommand)
+                            val suggestedAmount = parsed.amountText
+                            if (suggestedAmount == null) {
+                                smartSuggestion = if (language == "ar") "لم أتعرف على مبلغ. أدخله يدويًا أو أعد كتابة الوصف." else "No amount found. Enter it manually or rephrase the description."
+                            } else {
+                                amount = suggestedAmount
+                                type = parsed.transactionType
+                                parsed.category?.let { suggestion ->
+                                    category = if (language == "ar") suggestion.categoryNameArabic else suggestion.categoryNameEnglish
+                                }
+                                val titleCandidate = smartCommand.replace(
+                                    Regex("""[٠-٩۰-۹0-9]+([٫.,][٠-٩۰-۹0-9]+)?"""), ""
+                                ).trim()
+                                if (titleCandidate.isNotBlank()) title = titleCandidate
+                                val categoryLabel = parsed.category?.let {
+                                    if (language == "ar") it.categoryNameArabic else it.categoryNameEnglish
+                                } ?: if (language == "ar") "فئة غير محددة" else "Unclassified category"
+                                smartSuggestion = if (language == "ar") {
+                                    "اقتراح للمراجعة: ${if (type == "INCOME") "دخل" else "مصروف"} · ${suggestedAmount} · $categoryLabel"
+                                } else {
+                                    "Review suggestion: ${if (type == "INCOME") "Income" else "Expense"} · ${suggestedAmount} · $categoryLabel"
+                                }
+                            }
+                        },
+                        enabled = smartCommand.isNotBlank()
+                    ) { Text(if (language == "ar") "حلّل واقترح" else "Analyze & suggest") }
+                    smartSuggestion?.let { suggestion ->
+                        Text(
+                            suggestion,
+                            color = if (suggestion.startsWith(if (language == "ar") "اقتراح" else "Review")) Green else Red,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(words.transactionName) }, singleLine = true)
                 OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text(words.amount) }, supportingText = { Text(words.amountHint) }, singleLine = true)
