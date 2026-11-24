@@ -15,7 +15,7 @@ class CashFlowForecastTest {
         assertEquals(2, result.size)
         assertEquals(110_00L, result.first { it.currencyCode == "EGP" }.averageIncomeMinor)
         assertEquals(70_00L, result.first { it.currencyCode == "EGP" }.averageExpenseMinor)
-        assertEquals(30_00L, result.first { it.currencyCode == "EGP" }.projectedNetMinor)
+        assertEquals(40_00L, result.first { it.currencyCode == "EGP" }.projectedNetMinor)
         assertEquals(3_000L, result.first { it.currencyCode == "USD" }.projectedNetMinor)
     }
 
