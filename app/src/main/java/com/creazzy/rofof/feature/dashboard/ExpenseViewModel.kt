@@ -221,6 +221,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 weekdayRows = weekdayRows,
                 monthExpenseMinor = snapshot.totalExpenseMinor,
                 monthlyBudgetMinor = budgetState.monthlyBudgetMinor,
+                monthStartDate = currentMonthStart,
                 elapsedDays = currentMonth.dayOfMonth,
                 daysInMonth = currentMonth.lengthOfMonth(),
                 language = selectedLanguage
