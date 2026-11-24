@@ -20,8 +20,6 @@ jobs:
     name: Build and verify signed Release APK
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    env:
-      ANDROID_HOME: ${{ runner.temp }}/android-sdk
     steps:
       - name: Checkout main source
         uses: actions/checkout@v4
