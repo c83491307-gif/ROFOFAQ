@@ -200,6 +200,15 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         .map { it?.value?.takeIf { value -> value == "en" || value == "ar" } ?: "ar" }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "ar")
 
+    val insights = combine(
+        database.transactionDao().observeMonthlyInsightsSnapshot(
+            "EGP", 2, monthStartMillis, nextMonthStartMillis
+        ),
+        language
+    ) { snapshot, selectedLanguage ->
+        LocalInsightsEngine.generate(snapshot, System.currentTimeMillis(), selectedLanguage)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     init {
         viewModelScope.launch {
             runCatching { DatabaseSeeder(database).seedFromAssets(getApplication()) }
