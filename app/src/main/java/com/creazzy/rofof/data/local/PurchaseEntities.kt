@@ -116,3 +116,18 @@ data class PurchaseAllocationView(
     val amountMinor: Long,
     val personalTransactionId: String?
 )
+
+@Entity(
+    tableName = "purchase_allocation_debt_links",
+    foreignKeys = [
+        ForeignKey(entity = PurchaseAllocationEntity::class, parentColumns = ["id"], childColumns = ["allocationId"], onDelete = ForeignKey.RESTRICT),
+        ForeignKey(entity = DebtEntity::class, parentColumns = ["id"], childColumns = ["debtId"], onDelete = ForeignKey.RESTRICT)
+    ],
+    indices = [Index(value = ["allocationId"], unique = true), Index("debtId")]
+)
+data class PurchaseAllocationDebtLinkEntity(
+    @PrimaryKey val id: String,
+    val allocationId: String,
+    val debtId: String,
+    val createdAtEpochMillis: Long
+)
