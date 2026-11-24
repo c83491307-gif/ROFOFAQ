@@ -10,8 +10,10 @@ import java.text.Normalizer
  * posting a ledger transaction.
  */
 class SmartEntryParser(
-    private val keywords: Map<String, CategorySuggestion> = DEFAULT_KEYWORDS
+    private val keywords: Map<String, CategorySuggestion> = DEFAULT_KEYWORDS,
+    learnedKeywords: Map<String, CategorySuggestion> = emptyMap()
 ) {
+    private val allKeywords = keywords + learnedKeywords
     data class CategorySuggestion(
         val categoryNameArabic: String,
         val categoryNameEnglish: String,
@@ -31,7 +33,7 @@ class SmartEntryParser(
         val normalized = normalize(toAsciiDigits(original))
         val amount = AMOUNT.find(normalized)?.groupValues?.get(1)
             ?.replace(',', '.')
-        val categoryMatch = keywords.entries
+        val categoryMatch = allKeywords.entries
             .map { normalize(it.key) to it.value }
             .filter { (keyword, _) -> keyword.isNotBlank() && normalized.contains(keyword) }
             .maxByOrNull { it.first.length }
