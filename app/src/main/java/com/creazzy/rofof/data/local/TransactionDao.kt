@@ -134,7 +134,13 @@ interface TransactionDao {
             COALESCE(SUM(CASE
                 WHEN lower(categories.name) LIKE '%coffee%' OR lower(categories.name) LIKE '%قهوة%'
                 THEN transactions.amountMinor ELSE 0 END), 0) AS coffeeExpenseMinor,
-            COALESCE(MAX(transactions.occurredAtEpochMillis), 0) AS lastExpenseAtEpochMillis
+            COALESCE((
+                SELECT MAX(history.occurredAtEpochMillis)
+                FROM transactions AS history
+                WHERE history.transactionType = 'EXPENSE'
+                  AND history.currencyCode = :currencyCode
+                  AND history.currencyExponent = :currencyExponent
+            ), 0) AS lastExpenseAtEpochMillis
         FROM transactions
         LEFT JOIN categories ON categories.id = transactions.categoryId
         WHERE transactions.transactionType = 'EXPENSE'
