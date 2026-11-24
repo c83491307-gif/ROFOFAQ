@@ -82,9 +82,9 @@ class SmartEntryParser(
         private val AMOUNT = Regex("""(?<![\p{L}\d])([0-9]+(?:[.,][0-9]{1,4})?)(?![\p{L}\d])""")
 
         private val MATH_EXPRESSION = Regex(
-            """(?<![\\p{L}\\d])([0-9]+(?:[.,][0-9]+)?(?:\\s*[+*/-]\\s*[0-9]+(?:[.,][0-9]+)?)+(?![\\p{L}\\d]))"""
+            """(?<![\p{L}\d])([0-9]+(?:[.,][0-9]+)?(?:\s*[+*/-]\s*[0-9]+(?:[.,][0-9]+)?)+(?![\p{L}\d]))"""
         )
-        private val DATE_LIKE = Regex("""\\b[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}\\b""")
+        private val DATE_LIKE = Regex("""\b[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}\b""")
 
         private val INCOME_CUES = listOf("استلمت", "قبضت", "دخل لي", "وصلني", "تحويل وارد")
         private val EXPENSE_CUES = listOf("دفعت", "اشتريت", "صرف", "مصروف", "دفعت")
