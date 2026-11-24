@@ -1,9 +1,16 @@
 package com.creazzy.rofof.feature.awareness
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class RuleEngineTest {
     private val engine = RuleEngine()
     private val budgetRule = AwarenessRule(
@@ -43,7 +50,7 @@ class RuleEngineTest {
     }
 
     @Test fun unknownCategoryAndNegativeBalanceRulesWorkFromBundledRules() {
-        val context = org.robolectric.RuntimeEnvironment.getApplication<android.app.Application>()
+        val context = ApplicationProvider.getApplicationContext<Context>()
         val rules = RuleLoader().load(context).rules
         val unknown = engine.evaluate(rules, mapOf("categoryKnown" to false))
         assertTrue(unknown.any { it.ruleId == "unknown-category" })
