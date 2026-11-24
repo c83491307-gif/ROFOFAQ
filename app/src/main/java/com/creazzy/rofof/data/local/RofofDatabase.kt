@@ -24,9 +24,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BudgetEntity::class,
         FinancialGoalEntity::class,
         RecurringRuleEntity::class,
-        RecurringDraftEntity::class
+        RecurringDraftEntity::class,
+        DebtEntity::class,
+        DebtRepaymentEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 abstract class RofofDatabase : RoomDatabase() {
@@ -39,6 +41,7 @@ abstract class RofofDatabase : RoomDatabase() {
     abstract fun purchaseDao(): PurchaseDao
     abstract fun budgetGoalDao(): BudgetGoalDao
     abstract fun recurringDao(): RecurringDao
+    abstract fun debtDao(): DebtDao
 
     companion object {
         @Volatile
@@ -318,6 +321,25 @@ abstract class RofofDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""CREATE TABLE IF NOT EXISTS debts (
+                    id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, direction TEXT NOT NULL,
+                    principalMinor INTEGER NOT NULL, currencyCode TEXT NOT NULL, currencyExponent INTEGER NOT NULL,
+                    annualRateBasisPoints INTEGER NOT NULL, dueAtEpochMillis INTEGER, status TEXT NOT NULL,
+                    note TEXT, createdAtEpochMillis INTEGER NOT NULL, updatedAtEpochMillis INTEGER NOT NULL
+                )""")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_debts_status_dueAtEpochMillis ON debts (status, dueAtEpochMillis)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_debts_currencyCode_currencyExponent ON debts (currencyCode, currencyExponent)")
+                database.execSQL("""CREATE TABLE IF NOT EXISTS debt_repayments (
+                    id TEXT NOT NULL PRIMARY KEY, debtId TEXT NOT NULL, amountMinor INTEGER NOT NULL,
+                    paidAtEpochMillis INTEGER NOT NULL, note TEXT, createdAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(debtId) REFERENCES debts(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )""")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_debt_repayments_debtId_paidAtEpochMillis ON debt_repayments (debtId, paidAtEpochMillis)")
+            }
+        }
+
         fun getInstance(context: Context): RofofDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -325,7 +347,7 @@ abstract class RofofDatabase : RoomDatabase() {
                     RofofDatabase::class.java,
                     "rofof-local.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .build()
                     .also { instance = it }
             }
