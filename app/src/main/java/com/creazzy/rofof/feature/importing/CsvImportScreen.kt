@@ -49,6 +49,7 @@ fun CsvImportScreen(
     val scope = rememberCoroutineScope()
     val isArabic = language == "ar"
     var selectedName by remember { mutableStateOf<String?>(null) }
+    var selectedUri by remember { mutableStateOf<Uri?>(null) }
     var preview by remember { mutableStateOf<TransactionCsvImporter.ImportResult?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -56,6 +57,7 @@ fun CsvImportScreen(
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
+            selectedUri = uri
             busy = true
             status = null
             preview = null
@@ -170,7 +172,7 @@ fun CsvImportScreen(
                                     )
                                     context.contentResolver.openInputStream(
                                         // Re-open through the document picker URI retained below.
-                                        requireNotNull(currentImportUri)
+                                        requireNotNull(selectedUri)
                                     )?.bufferedReader(Charsets.UTF_8)?.use { reader ->
                                         service.importConfirmed(reader.readText())
                                     } ?: error("Unable to reopen selected CSV")
@@ -202,4 +204,4 @@ fun CsvImportScreen(
     }
 }
 
-private var currentImportUri: Uri? = null
+
