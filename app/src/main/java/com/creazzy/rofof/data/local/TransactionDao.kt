@@ -92,7 +92,7 @@ interface TransactionDao {
 
     @Query("""
         SELECT COUNT(*) FROM transactions
-        WHERE transactionType = 'EXPENSE' AND categoryId = :categoryId
+        WHERE isDeleted = 0 AND transactionType = 'EXPENSE' AND categoryId = :categoryId
           AND currencyCode = :currencyCode AND currencyExponent = :currencyExponent
           AND occurredAtEpochMillis >= :fromEpochMillis AND occurredAtEpochMillis < :toEpochMillis
     """)
@@ -149,7 +149,7 @@ interface TransactionDao {
             COALESCE((
                 SELECT MAX(history.occurredAtEpochMillis)
                 FROM transactions AS history
-                WHERE history.transactionType = 'EXPENSE'
+                WHERE history.isDeleted = 0 AND history.transactionType = 'EXPENSE'
                   AND history.currencyCode = :currencyCode
                   AND history.currencyExponent = :currencyExponent
             ), 0) AS lastExpenseAtEpochMillis
