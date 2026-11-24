@@ -1,5 +1,12 @@
 package com.creazzy.rofof.app
 
+import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -25,6 +34,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -69,11 +82,23 @@ fun ROFOFRootScreen(
     onAppLockChange: (Boolean) -> Unit = {}
 ) {
     val navController = rememberNavController()
+    val context = LocalContext.current
+    var showExitDialog by remember { mutableStateOf(false) }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: "dashboard"
     val expenseViewModel: ExpenseViewModel = viewModel()
     val language by expenseViewModel.language.collectAsState()
     val isArabic = language == "ar"
+
+    BackHandler(enabled = true) {
+        if (currentRoute != "dashboard") {
+            if (!navController.popBackStack()) {
+                navController.navigate("dashboard") { launchSingleTop = true }
+            }
+        } else {
+            showExitDialog = true
+        }
+    }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
@@ -92,6 +117,25 @@ fun ROFOFRootScreen(
             navController.navigate("dashboard") { launchSingleTop = true }
             if (openDashboard) onDashboardConsumed()
         }
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text(if (isArabic) "الخروج من ROFOF؟" else "Exit ROFOF?") },
+            text = { Text(if (isArabic) "هل تريد إغلاق التطبيق الآن؟" else "Do you want to close the app now?") },
+            confirmButton = {
+                Button(onClick = {
+                    showExitDialog = false
+                    (context as? Activity)?.finish()
+                }) { Text(if (isArabic) "خروج" else "Exit") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text(if (isArabic) "إلغاء" else "Cancel")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -120,7 +164,11 @@ fun ROFOFRootScreen(
         NavHost(
             navController = navController,
             startDestination = "dashboard",
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { slideInHorizontally(initialOffsetX = { it / 5 }, animationSpec = tween(220)) + fadeIn(animationSpec = tween(220)) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 5 }, animationSpec = tween(180)) + fadeOut(animationSpec = tween(180)) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 5 }, animationSpec = tween(220)) + fadeIn(animationSpec = tween(220)) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it / 5 }, animationSpec = tween(180)) + fadeOut(animationSpec = tween(180)) }
         ) {
             composable("dashboard") {
                 DashboardScreen(
