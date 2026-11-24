@@ -66,6 +66,7 @@ fun PurchaseManagementScreen(
     var allocateItem by remember { mutableStateOf<PurchaseItemEntity?>(null) }
     var paymentParticipant by remember { mutableStateOf<String?>(null) }
     var expenseAllocation by remember { mutableStateOf<String?>(null) }
+    var showPayerSplit by remember { mutableStateOf(false) }
 
     Surface(color = Color(0xFFF4F7F5), modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(18.dp)) {
@@ -118,6 +119,8 @@ fun PurchaseManagementScreen(
                     onAllocate = { allocateItem = it },
                     onPayment = { paymentParticipant = it },
                     onConvert = { expenseAllocation = it },
+                    onRecordPayerSplit = { showPayerSplit = true },
+                    canRecordPayerSplit = session.status == "OPEN" && allocations.isNotEmpty() && allocations.all { it.personalTransactionId == null && it.debtId == null } && items.isNotEmpty() && items.all { item -> allocations.any { it.itemId == item.id } },
                     onClose = viewModel::closeAsSettled
                 )
             }
@@ -163,6 +166,20 @@ fun PurchaseManagementScreen(
             }
         )
     }
+    if (showPayerSplit && session != null) {
+        PayerSplitDialog(
+            participants = participants,
+            accounts = accounts.filter { !it.isArchived && it.currencyCode == session.currencyCode && it.currencyExponent == session.currencyExponent },
+            categories = categories.filter { !it.isArchived && it.transactionType == "EXPENSE" },
+            language = language,
+            busy = busy,
+            onDismiss = { showPayerSplit = false },
+            onConfirm = { payerId, accountId, categoryId ->
+                viewModel.recordPayerSplit(payerId, accountId, categoryId)
+                showPayerSplit = false
+            }
+        )
+    }
     expenseAllocation?.let { allocationId ->
         PersonalExpenseDialog(
             accounts = accounts.filter { !it.isArchived && it.currencyCode == session?.currencyCode && it.currencyExponent == session?.currencyExponent },
@@ -191,6 +208,8 @@ private fun PurchaseDetail(
     onAllocate: (PurchaseItemEntity) -> Unit,
     onPayment: (String) -> Unit,
     onConvert: (String) -> Unit,
+    onRecordPayerSplit: () -> Unit,
+    canRecordPayerSplit: Boolean,
     onClose: () -> Unit
 ) {
     val ar = language == "ar"
@@ -208,6 +227,11 @@ private fun PurchaseDetail(
                 Button(onClick = onAddItem, enabled = session.status == "OPEN" && !busy) {
                     Text(if (ar) "إضافة صنف" else "Add item")
                 }
+            }
+        }
+        if (canRecordPayerSplit) item {
+            Button(onClick = onRecordPayerSplit, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                Text(if (ar) "دفعت الفاتورة كاملة — قسّمها على المشاركين" else "I paid the full bill — split it")
             }
         }
         item { Text(if (ar) "المشاركون" else "Participants", style = MaterialTheme.typography.titleMedium) }
@@ -375,6 +399,59 @@ private fun AllocationEntryDialog(
         },
         confirmButton = { Button(onClick = { onConfirm(values.toMap()) }, enabled = values.values.any { it.isNotBlank() }) { Text(if (ar) "حفظ التوزيع" else "Save allocation") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(if (ar) "إلغاء" else "Cancel") } }
+    )
+}
+
+@Composable
+private fun PayerSplitDialog(
+    participants: List<com.creazzy.rofof.data.local.PurchaseParticipantEntity>,
+    accounts: List<com.creazzy.rofof.data.local.AccountBalance>,
+    categories: List<com.creazzy.rofof.data.local.CategoryEntity>,
+    language: String,
+    busy: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, String) -> Unit
+) {
+    val ar = language == "ar"
+    var payerId by remember(participants) { mutableStateOf(participants.firstOrNull()?.id.orEmpty()) }
+    var accountId by remember(accounts) { mutableStateOf(accounts.firstOrNull()?.id.orEmpty()) }
+    var categoryId by remember(categories) { mutableStateOf(categories.firstOrNull()?.id.orEmpty()) }
+    var payerMenu by remember { mutableStateOf(false) }
+    var accountMenu by remember { mutableStateOf(false) }
+    var categoryMenu by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (ar) "تقسيم فاتورة دفعتها" else "Split a bill you paid") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(if (ar) "سيُسجل نصيبك كمصروف، وتُنشأ ديون تلقائياً بالحصص المتبقية للآخرين." else "Your share becomes one personal expense; each other participant's unpaid share becomes a receivable debt.")
+                TextButton(onClick = { payerMenu = true }) {
+                    Text(participants.firstOrNull { it.id == payerId }?.displayName ?: if (ar) "من دفع؟" else "Who paid?")
+                }
+                DropdownMenu(payerMenu, { payerMenu = false }) {
+                    participants.forEach { p -> DropdownMenuItem(text = { Text(p.displayName) }, onClick = { payerId = p.id; payerMenu = false }) }
+                }
+                TextButton(onClick = { accountMenu = true }) {
+                    Text(accounts.firstOrNull { it.id == accountId }?.name ?: if (ar) "اختر الحساب" else "Choose account")
+                }
+                DropdownMenu(accountMenu, { accountMenu = false }) {
+                    accounts.forEach { a -> DropdownMenuItem(text = { Text(a.name) }, onClick = { accountId = a.id; accountMenu = false }) }
+                }
+                TextButton(onClick = { categoryMenu = true }) {
+                    Text(categories.firstOrNull { it.id == categoryId }?.name ?: if (ar) "اختر الفئة" else "Choose category")
+                }
+                DropdownMenu(categoryMenu, { categoryMenu = false }) {
+                    categories.forEach { value -> DropdownMenuItem(text = { Text(value.name) }, onClick = { categoryId = value.id; categoryMenu = false }) }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(payerId, accountId, categoryId) },
+                enabled = payerId.isNotBlank() && accountId.isNotBlank() && categoryId.isNotBlank() && !busy) {
+                Text(if (ar) "إنشاء المصروف والديون" else "Create expense & debts")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text(if (ar) "إلغاء" else "Cancel") } }
     )
 }
 
