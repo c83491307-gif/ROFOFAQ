@@ -63,8 +63,8 @@ class BudgetGoalViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun updateGoalProgress(id: String, amount: String, exponent: Int) =
-        execute { repository.updateGoalProgress(id, parseMinor(amount, exponent)) }
+    fun contributeToGoal(id: String, amount: String, exponent: Int) =
+        execute { repository.contributeToGoal(id, parseMinor(amount, exponent)) }
 
     fun archiveGoal(id: String) = execute { repository.archiveGoal(id) }
 
