@@ -1,17 +1,13 @@
 package com.creazzy.rofof.feature.importing
 
-import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,7 +45,7 @@ fun CsvImportScreen(
     val scope = rememberCoroutineScope()
     val isArabic = language == "ar"
     var selectedName by remember { mutableStateOf<String?>(null) }
-    var selectedUri by remember { mutableStateOf<Uri?>(null) }
+    var csvContent by remember { mutableStateOf<String?>(null) }
     var preview by remember { mutableStateOf<TransactionCsvImporter.ImportResult?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -57,7 +53,7 @@ fun CsvImportScreen(
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
-            selectedUri = uri
+            csvContent = null
             busy = true
             status = null
             preview = null
@@ -87,12 +83,13 @@ fun CsvImportScreen(
                             .onMalformedInput(CodingErrorAction.REPORT)
                             .onUnmappableCharacter(CodingErrorAction.REPORT)
                             .decode(ByteBuffer.wrap(bytes)).toString()
-                        name to TransactionCsvImporter.parse(csv)
+                        Triple(name, csv, TransactionCsvImporter.parse(csv))
                     }
                 }
                 busy = false
-                result.onSuccess { (name, parsed) ->
+                result.onSuccess { (name, csv, parsed) ->
                     selectedName = name
+                    csvContent = csv
                     preview = parsed
                     if (!parsed.isValid) {
                         status = if (isArabic) "تعذر اعتماد الملف: راجع أخطاء التحقق أدناه." else "File validation failed. Review the errors below."
@@ -170,12 +167,7 @@ fun CsvImportScreen(
                                         database.accountDao(),
                                         database.categoryDao()
                                     )
-                                    context.contentResolver.openInputStream(
-                                        // Re-open through the document picker URI retained below.
-                                        requireNotNull(selectedUri)
-                                    )?.bufferedReader(Charsets.UTF_8)?.use { reader ->
-                                        service.importConfirmed(reader.readText())
-                                    } ?: error("Unable to reopen selected CSV")
+                                    service.importConfirmed(requireNotNull(csvContent))
                                 }
                             }
                             busy = false
@@ -197,6 +189,7 @@ fun CsvImportScreen(
             TextButton(onClick = {
                 preview = null
                 selectedName = null
+                csvContent = null
                 status = null
                 imported = false
             }) { Text(if (isArabic) "استيراد ملف آخر" else "Import another file") }
