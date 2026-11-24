@@ -151,4 +151,32 @@ class TransactionDaoTest {
         assertEquals(listOf("usd", "fuel"), dateMatches.map { it.id })
     }
 
+    @Test fun monthlyInsightsAggregateLocalWeekendAndCoffeeSpendWithoutMixingCurrencies() = runBlocking {
+        val dao = database.transactionDao()
+        val zone = java.time.ZoneId.systemDefault()
+        fun at(day: Int) = java.time.LocalDate.of(2026, 11, day)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
+        val start = at(1)
+        val end = java.time.LocalDate.of(2026, 12, 1)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
+        val finance = com.creazzy.rofof.data.repository.RoomFinanceRepository(database)
+        val coffee = finance.createCategory("قهوة", "EXPENSE")
+        val food = finance.createCategory("Food", "EXPENSE")
+        dao.insert(TransactionEntity("insight-coffee-friday", "Coffee", "EXPENSE", 2_000L, "EGP", 2, "cash", coffee, at(20), at(20), null))
+        dao.insert(TransactionEntity("insight-food-saturday", "Groceries", "EXPENSE", 3_000L, "EGP", 2, "cash", food, at(21), at(21), null))
+        dao.insert(TransactionEntity("insight-food-monday", "Lunch", "EXPENSE", 1_000L, "EGP", 2, "cash", food, at(23), at(23), null))
+        dao.insert(TransactionEntity("insight-usd-weekend", "USD coffee", "EXPENSE", 9_000L, "USD", 2, "card", coffee, at(21), at(21), null))
+
+        val snapshot = dao.observeMonthlyInsightsSnapshot("EGP", 2, start, end).first()
+
+        assertEquals(5_000L, snapshot.weekendExpenseMinor)
+        assertEquals(2, snapshot.weekendDays)
+        assertEquals(1_000L, snapshot.weekdayExpenseMinor)
+        assertEquals(1, snapshot.weekdayDays)
+        assertEquals(6_000L, snapshot.totalExpenseMinor)
+        assertEquals(2_000L, snapshot.coffeeExpenseMinor)
+        assertEquals(at(23), snapshot.lastExpenseAtEpochMillis)
+    }
+
+
 }
