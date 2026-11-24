@@ -163,7 +163,7 @@ fun RecurringManagementScreen(onBack: () -> Unit) {
             Text("إضافة قاعدة شهرية · Add monthly rule")
         }
         Text(
-            "تُسجّل العمليات المستحقة تلقائياً في الخلفية يومياً · Due items are drafted for review before posting",
+            "تُنشأ مسودات للمراجعة قبل التسجيل · Due items are drafted for review before posting",
             modifier = Modifier.fillMaxWidth()
         )
         if (actionMessage.isNotBlank()) Text(actionMessage)
