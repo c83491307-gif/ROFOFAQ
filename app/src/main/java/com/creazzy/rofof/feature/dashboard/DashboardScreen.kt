@@ -78,6 +78,7 @@ fun DashboardScreen(
     val managedCategories by expenseViewModel.managedCategories.collectAsState()
     val totals by expenseViewModel.totals.collectAsState()
     val safeToSpend by expenseViewModel.safeToSpend.collectAsState()
+    val insights by expenseViewModel.insights.collectAsState()
     val language by expenseViewModel.language.collectAsState()
     val financeActionMessage by expenseViewModel.financeActionMessage.collectAsState()
     val awarenessReview by expenseViewModel.awarenessReview.collectAsState()
@@ -194,6 +195,33 @@ fun DashboardScreen(
                                 color = Muted,
                                 style = MaterialTheme.typography.bodyMedium
                             )
+                        }
+                    }
+                }
+
+                if (insights.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Column(
+                            Modifier.fillMaxWidth().padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(9.dp)
+                        ) {
+                            Text(
+                                if (isArabic) "رؤى مالية ذكية" else "Smart financial insights",
+                                color = Ink,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            insights.forEach { insight ->
+                                Row(verticalAlignment = Alignment.Top) {
+                                    Text("✦", color = Green, modifier = Modifier.padding(end = 8.dp))
+                                    Text(insight, color = Muted, style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
                         }
                     }
                 }
