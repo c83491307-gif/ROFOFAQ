@@ -108,20 +108,20 @@ object TransactionCsvImporter {
             } else if (afterQuote) {
                 when (ch) {
                     ',' -> finishCell()
-                    '\\n' -> finishRow()
-                    '\\r' -> {
+                    '\n' -> finishRow()
+                    '\r' -> {
                         finishRow()
-                        if (i + 1 < input.length && input[i + 1] == '\\n') i++
+                        if (i + 1 < input.length && input[i + 1] == '\n') i++
                     }
                     else -> throw IllegalArgumentException("Unexpected character after closing quote")
                 }
             } else {
                 when (ch) {
                     ',' -> finishCell()
-                    '\\n' -> finishRow()
-                    '\\r' -> {
+                    '\n' -> finishRow()
+                    '\r' -> {
                         finishRow()
-                        if (i + 1 < input.length && input[i + 1] == '\\n') i++
+                        if (i + 1 < input.length && input[i + 1] == '\n') i++
                     }
                     '"' -> {
                         require(cell.isEmpty()) { "Quote must begin at the start of a field" }
