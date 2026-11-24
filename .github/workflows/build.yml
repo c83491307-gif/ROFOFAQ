@@ -5,13 +5,14 @@ on:
     branches:
       - feat/rofof-apk-integration
   workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or commit to build
+        required: true
+        default: feat/rofof-apk-integration
 
 permissions:
   contents: read
-
-concurrency:
-  group: rofof-debug-apk-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   build-debug-apk:
@@ -21,24 +22,21 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
+        with:
+          ref: ${{ inputs.ref || github.ref }}
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
-
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-
       - name: Verify required local assets
         shell: bash
         run: |
@@ -49,11 +47,8 @@ jobs:
           python3 -c 'import json, pathlib; [json.loads(pathlib.Path(p).read_text(encoding="utf-8")) for p in ["app/src/main/assets/awareness/categories.json", "app/src/main/assets/awareness/keywords_ar.json", "app/src/main/assets/awareness/rules.json"]]'
           test -s app/src/main/AndroidManifest.xml
           test -s app/build.gradle.kts
-          echo "Required Android source assets are present."
-
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace assembleDebug
-
       - name: Verify APK output
         shell: bash
         run: |
@@ -62,7 +57,6 @@ jobs:
           test -s "$APK"
           sha256sum "$APK"
           ls -lh "$APK"
-
       - name: Upload installable debug APK
         uses: actions/upload-artifact@v4
         with:
