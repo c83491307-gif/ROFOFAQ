@@ -86,6 +86,29 @@ class BudgetGoalRepositoryTest {
         assertTrue(database.budgetGoalDao().findGoal(id)?.isArchived == true)
     }
 
+    @Test fun goalContributionDebitsMatchingAccountAndUpdatesGoalAtomically() = runBlocking {
+        val accountId = finance.createAccount("Savings source", "EGP", 2, 10_000L)
+        val goalId = plans.createGoal("Laptop", 8_000L, "EGP", 2, null)
+
+        plans.contributeToGoal(goalId, 2_500L)
+
+        assertEquals(2_500L, database.budgetGoalDao().findGoal(goalId)?.currentAmountMinor)
+        assertEquals(7_500L, database.accountDao().findBalance(accountId)?.balanceMinor)
+        val recorded = database.transactionDao().observeRecent().first().single()
+        assertEquals("EXPENSE", recorded.transactionType)
+        assertEquals(2_500L, recorded.amountMinor)
+        assertTrue(recorded.title.contains("Laptop"))
+    }
+
+    @Test fun goalContributionRejectsInsufficientFundsWithoutChangingGoal() = runBlocking {
+        finance.createAccount("Small balance", "EGP", 2, 500L)
+        val goalId = plans.createGoal("Emergency fund", 10_000L, "EGP", 2, null)
+
+        assertTrue(runCatching { plans.contributeToGoal(goalId, 1_000L) }.isFailure)
+        assertEquals(0L, database.budgetGoalDao().findGoal(goalId)?.currentAmountMinor)
+        assertTrue(database.transactionDao().observeRecent().first().isEmpty())
+    }
+
     @Test fun goalsRejectInvalidTargetsAndNegativeProgress() = runBlocking {
         assertTrue(runCatching { plans.createGoal(" ", 100L, "EGP", 2, null) }.isFailure)
         assertTrue(runCatching { plans.createGoal("Trip", 0L, "EGP", 2, null) }.isFailure)
