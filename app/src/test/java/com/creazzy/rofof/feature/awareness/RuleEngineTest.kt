@@ -27,6 +27,19 @@ class RuleEngineTest {
         assertTrue(engine.evaluate(listOf(budgetRule), mapOf("budgetPercent" to 100)).isEmpty())
     }
 
+    @Test fun bundledBudgetRulesProduceWarningAtEightyAndExceededAtOneHundred() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val rules = RuleLoader().load(context).rules
+        val atEighty = engine.evaluate(rules, mapOf("budgetPercent" to 80)).map { it.action.type }
+        val atNinetyNine = engine.evaluate(rules, mapOf("budgetPercent" to 99)).map { it.action.type }
+        val atOneHundred = engine.evaluate(rules, mapOf("budgetPercent" to 100)).map { it.action.type }
+
+        assertTrue(atEighty.contains("BUDGET_WARNING"))
+        assertTrue(atNinetyNine.contains("BUDGET_WARNING"))
+        assertTrue(!atOneHundred.contains("BUDGET_WARNING"))
+        assertTrue(atOneHundred.contains("BUDGET_EXCEEDED"))
+    }
+
     @Test fun disabledRulesAndMissingFactsDoNotFire() {
         val disabled = budgetRule.copy(enabled = false)
         assertTrue(engine.evaluate(listOf(disabled), mapOf("budgetPercent" to 90)).isEmpty())
