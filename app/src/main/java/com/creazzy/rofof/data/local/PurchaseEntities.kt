@@ -102,9 +102,10 @@ data class ParticipantSettlementRow(
     val participantId: String,
     val displayName: String,
     val allocatedMinor: Long,
-    val paidMinor: Long
+    val paidMinor: Long,
+    val debtMinor: Long
 ) {
-    val balanceMinor: Long get() = Math.subtractExact(allocatedMinor, paidMinor)
+    val balanceMinor: Long get() = Math.subtractExact(Math.subtractExact(allocatedMinor, paidMinor), debtMinor)
 }
 
 data class PurchaseAllocationView(
@@ -114,5 +115,21 @@ data class PurchaseAllocationView(
     val participantId: String,
     val participantName: String,
     val amountMinor: Long,
-    val personalTransactionId: String?
+    val personalTransactionId: String?,
+    val debtId: String?
+)
+
+@Entity(
+    tableName = "purchase_allocation_debt_links",
+    foreignKeys = [
+        ForeignKey(entity = PurchaseAllocationEntity::class, parentColumns = ["id"], childColumns = ["allocationId"], onDelete = ForeignKey.RESTRICT),
+        ForeignKey(entity = DebtEntity::class, parentColumns = ["id"], childColumns = ["debtId"], onDelete = ForeignKey.RESTRICT)
+    ],
+    indices = [Index(value = ["allocationId"], unique = true), Index("debtId")]
+)
+data class PurchaseAllocationDebtLinkEntity(
+    @PrimaryKey val id: String,
+    val allocationId: String,
+    val debtId: String,
+    val createdAtEpochMillis: Long
 )

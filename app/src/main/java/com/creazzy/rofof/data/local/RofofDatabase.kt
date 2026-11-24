@@ -21,12 +21,16 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PurchaseAllocationEntity::class,
         PurchasePaymentEntity::class,
         AllocationPersonalExpenseLinkEntity::class,
+        PurchaseAllocationDebtLinkEntity::class,
         BudgetEntity::class,
         FinancialGoalEntity::class,
         RecurringRuleEntity::class,
-        RecurringDraftEntity::class
+        RecurringDraftEntity::class,
+        DebtEntity::class,
+        DebtRepaymentEntity::class,
+        LearnedKeyword::class
     ],
-    version = 7,
+    version = 13,
     exportSchema = true
 )
 abstract class RofofDatabase : RoomDatabase() {
@@ -39,10 +43,33 @@ abstract class RofofDatabase : RoomDatabase() {
     abstract fun purchaseDao(): PurchaseDao
     abstract fun budgetGoalDao(): BudgetGoalDao
     abstract fun recurringDao(): RecurringDao
+    abstract fun debtDao(): DebtDao
+    abstract fun learnedKeywordDao(): LearnedKeywordDao
 
     companion object {
         @Volatile
         private var instance: RofofDatabase? = null
+
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""CREATE TABLE IF NOT EXISTS purchase_allocation_debt_links (
+                    id TEXT NOT NULL PRIMARY KEY, allocationId TEXT NOT NULL, debtId TEXT NOT NULL,
+                    createdAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(allocationId) REFERENCES purchase_allocations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                    FOREIGN KEY(debtId) REFERENCES debts(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )""")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_purchase_allocation_debt_links_allocationId ON purchase_allocation_debt_links (allocationId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_allocation_debt_links_debtId ON purchase_allocation_debt_links (debtId)")
+            }
+        }
+
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE transactions ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE transactions ADD COLUMN deletedAtEpochMillis INTEGER")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_transactions_isDeleted_occurredAtEpochMillis ON transactions (isDeleted, occurredAtEpochMillis)")
+            }
+        }
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -318,6 +345,59 @@ abstract class RofofDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""CREATE TABLE IF NOT EXISTS debts (
+                    id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, direction TEXT NOT NULL,
+                    principalMinor INTEGER NOT NULL, currencyCode TEXT NOT NULL, currencyExponent INTEGER NOT NULL,
+                    annualRateBasisPoints INTEGER NOT NULL, dueAtEpochMillis INTEGER, status TEXT NOT NULL,
+                    note TEXT, createdAtEpochMillis INTEGER NOT NULL, updatedAtEpochMillis INTEGER NOT NULL
+                )""")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_debts_status_dueAtEpochMillis ON debts (status, dueAtEpochMillis)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_debts_currencyCode_currencyExponent ON debts (currencyCode, currencyExponent)")
+                database.execSQL("""CREATE TABLE IF NOT EXISTS debt_repayments (
+                    id TEXT NOT NULL PRIMARY KEY, debtId TEXT NOT NULL, amountMinor INTEGER NOT NULL,
+                    paidAtEpochMillis INTEGER NOT NULL, note TEXT, createdAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(debtId) REFERENCES debts(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )""")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_debt_repayments_debtId_paidAtEpochMillis ON debt_repayments (debtId, paidAtEpochMillis)")
+            }
+        }
+
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS learned_keywords (
+                        keyword TEXT NOT NULL PRIMARY KEY,
+                        categoryId TEXT NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_learned_keywords_categoryId ON learned_keywords (categoryId)"
+                )
+            }
+        }
+
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE transactions ADD COLUMN recurringOccurrenceKey TEXT")
+                database.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_transactions_recurringOccurrenceKey ON transactions (recurringOccurrenceKey)"
+                )
+            }
+        }
+
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE recurring_rules ADD COLUMN dayOfMonth INTEGER NOT NULL DEFAULT 1"
+                )
+                database.execSQL(
+                    "UPDATE recurring_rules SET dayOfMonth = CAST(strftime('%d', nextRunEpochMillis / 1000, 'unixepoch', 'localtime') AS INTEGER)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): RofofDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -325,7 +405,7 @@ abstract class RofofDatabase : RoomDatabase() {
                     RofofDatabase::class.java,
                     "rofof-local.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                     .build()
                     .also { instance = it }
             }

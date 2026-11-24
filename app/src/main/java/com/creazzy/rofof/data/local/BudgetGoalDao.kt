@@ -14,7 +14,7 @@ interface BudgetGoalDao {
                b.periodStartEpochMillis, b.periodEndEpochMillis,
                COALESCE((
                    SELECT SUM(t.amountMinor) FROM transactions t
-                   WHERE t.categoryId = b.categoryId
+                   WHERE t.isDeleted = 0 AND t.categoryId = b.categoryId
                      AND t.transactionType = 'EXPENSE'
                      AND t.currencyCode = b.currencyCode
                      AND t.currencyExponent = b.currencyExponent
@@ -52,6 +52,20 @@ interface BudgetGoalDao {
         ORDER BY b.createdAtEpochMillis DESC
     """)
     fun observeBudgetsForPeriod(periodStartEpochMillis: Long): Flow<List<BudgetProgress>>
+
+    @Query("""
+        SELECT COALESCE(SUM(amountMinor), 0) FROM budgets
+        WHERE currencyCode = :currencyCode
+          AND currencyExponent = :currencyExponent
+          AND periodStartEpochMillis = :periodStartEpochMillis
+          AND periodEndEpochMillis = :periodEndEpochMillis
+    """)
+    fun observeMonthlyBudgetTotal(
+        currencyCode: String,
+        currencyExponent: Int,
+        periodStartEpochMillis: Long,
+        periodEndEpochMillis: Long
+    ): Flow<Long>
 
     @Query("SELECT * FROM budgets WHERE id = :id LIMIT 1")
     suspend fun findBudget(id: String): BudgetEntity?

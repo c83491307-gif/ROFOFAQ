@@ -86,6 +86,29 @@ class BudgetGoalRepositoryTest {
         assertTrue(database.budgetGoalDao().findGoal(id)?.isArchived == true)
     }
 
+    @Test fun goalContributionDebitsMatchingAccountAndUpdatesGoalAtomically() = runBlocking {
+        val accountId = finance.createAccount("Savings source", "EGP", 2, 10_000L)
+        val goalId = plans.createGoal("Laptop", 8_000L, "EGP", 2, null)
+
+        plans.contributeToGoal(goalId, 2_500L)
+
+        assertEquals(2_500L, database.budgetGoalDao().findGoal(goalId)?.currentAmountMinor)
+        assertEquals(7_500L, database.accountDao().findBalance(accountId)?.balanceMinor)
+        val recorded = database.transactionDao().observeRecent().first().single()
+        assertEquals("EXPENSE", recorded.transactionType)
+        assertEquals(2_500L, recorded.amountMinor)
+        assertTrue(recorded.title.contains("Laptop"))
+    }
+
+    @Test fun goalContributionRejectsInsufficientFundsWithoutChangingGoal() = runBlocking {
+        finance.createAccount("Small balance", "EGP", 2, 500L)
+        val goalId = plans.createGoal("Emergency fund", 10_000L, "EGP", 2, null)
+
+        assertTrue(runCatching { plans.contributeToGoal(goalId, 1_000L) }.isFailure)
+        assertEquals(0L, database.budgetGoalDao().findGoal(goalId)?.currentAmountMinor)
+        assertTrue(database.transactionDao().observeRecent().first().isEmpty())
+    }
+
     @Test fun goalsRejectInvalidTargetsAndNegativeProgress() = runBlocking {
         assertTrue(runCatching { plans.createGoal(" ", 100L, "EGP", 2, null) }.isFailure)
         assertTrue(runCatching { plans.createGoal("Trip", 0L, "EGP", 2, null) }.isFailure)
@@ -93,18 +116,22 @@ class BudgetGoalRepositoryTest {
         assertTrue(runCatching { plans.updateGoalProgress(id, -1L) }.isFailure)
     }
 
-    @Test fun schemaVersionSevenCreatesBudgetGoalAndRecurringTables() = runBlocking {
+    @Test fun schemaVersionTwelveIncludesTransactionTrashAndExistingFinanceTables() = runBlocking {
         val tables = database.openHelper.readableDatabase.query(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('budgets', 'financial_goals', 'recurring_drafts', 'recurring_rules') ORDER BY name"
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('budgets', 'debt_repayments', 'debts', 'financial_goals', 'learned_keywords', 'recurring_drafts', 'recurring_rules') ORDER BY name"
         ).use { cursor ->
             buildList { while (cursor.moveToNext()) add(cursor.getString(0)) }
         }
-        assertEquals(listOf("budgets", "financial_goals", "recurring_drafts", "recurring_rules"), tables)
+        assertEquals(listOf("budgets", "debt_repayments", "debts", "financial_goals", "learned_keywords", "recurring_drafts", "recurring_rules"), tables)
         val version = database.openHelper.readableDatabase.query("PRAGMA user_version").use { cursor ->
             cursor.moveToFirst()
             cursor.getInt(0)
         }
-        assertEquals(7, version)
+        assertEquals(12, version)
+        val trashColumns = database.openHelper.readableDatabase.query("PRAGMA table_info(transactions)").use { cursor ->
+            buildSet { while (cursor.moveToNext()) add(cursor.getString(1)) }
+        }
+        assertTrue(trashColumns.containsAll(setOf("isDeleted", "deletedAtEpochMillis")))
     }
     @Test fun budgetAlertSnapshotUsesOnlyMatchingCategoryCurrencyAndPeriod() = runBlocking {
         val account = finance.createAccount("Main", "EGP", 2, 0L)

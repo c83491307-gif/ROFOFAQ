@@ -99,6 +99,11 @@ class PurchaseViewModel(application: Application) : AndroidViewModel(application
         execute { repository.closeAsSettled(sessionId) }
     }
 
+    fun recordPayerSplit(payerParticipantId: String, accountId: String, categoryId: String) {
+        val sessionId = selectedId.value ?: return
+        execute { repository.recordPayerSplitAsPersonalExpense(sessionId, payerParticipantId, accountId, categoryId) }
+    }
+
     fun recordAsPersonalExpense(allocationId: String, accountId: String, categoryId: String) {
         execute { repository.recordAllocationAsPersonalExpense(allocationId, accountId, categoryId) }
     }

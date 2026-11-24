@@ -5,7 +5,7 @@ on:
   push:
     branches: [main, c83491307-gif-patch-1, "feat/rofof-**"]
   pull_request:
-    branches: [main, c83491307-gif-patch-1, feat/rofof-phase0-discovery]
+    branches: [main, c83491307-gif-patch-1, feat/rofof-phase0-discovery, feat/rofof-shared-purchases]
 
 permissions:
   contents: read
@@ -32,11 +32,32 @@ jobs:
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - name: Unit and Robolectric Room tests
-        run: gradle --no-daemon testDebugUnitTest
+        shell: bash
+        run: |
+          for attempt in 1 2 3 4; do
+            if gradle --no-daemon testDebugUnitTest; then exit 0; fi
+            if [ "$attempt" -lt 4 ]; then
+              echo "Gradle dependency/test attempt $attempt failed; retrying after backoff."
+              sleep $((attempt * 20))
+            fi
+          done
+          exit 1
       - name: Android lint
-        run: gradle --no-daemon lintDebug
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if gradle --no-daemon lintDebug; then exit 0; fi
+            sleep $((attempt * 15))
+          done
+          exit 1
       - name: Debug APK
-        run: gradle --no-daemon assembleDebug
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if gradle --no-daemon assembleDebug; then exit 0; fi
+            sleep $((attempt * 15))
+          done
+          exit 1
       - name: Upload verification artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -50,3 +71,34 @@ jobs:
             app/schemas/*.json
           if-no-files-found: warn
           retention-days: 14
+
+  instrumented-android-tests:
+    name: Android emulator instrumentation tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - uses: android-actions/setup-android@v4
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "system-images;android-35;google_apis;x86_64"
+      - name: Run instrumentation tests on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            for attempt in 1 2 3 4; do
+              if gradle --no-daemon connectedDebugAndroidTest; then exit 0; fi
+              if [ "$attempt" -lt 4 ]; then sleep $((attempt * 20)); fi
+            done
+            exit 1

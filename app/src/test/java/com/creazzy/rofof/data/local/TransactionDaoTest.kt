@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,6 +20,49 @@ class TransactionDaoTest {
     private lateinit var database: RofofDatabase
     @Before fun createDatabase() { database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), RofofDatabase::class.java).allowMainThreadQueries().build() }
     @After fun closeDatabase() { database.close() }
+
+    @Test fun softDeletedTransactionLeavesLedgerTotalsAndCanBeRestoredForThirtyDays() = runBlocking {
+        val dao = database.transactionDao()
+        dao.insert(TransactionEntity("trash-expense", "Coffee", "EXPENSE", 2_500L, "EGP", 2, "cash", "coffee", 10L, 10L, null))
+        dao.insert(TransactionEntity("visible-expense", "Lunch", "EXPENSE", 1_500L, "EGP", 2, "cash", "food", 20L, 20L, null))
+
+        assertEquals(1, dao.moveToTrash("trash-expense", 100L))
+        assertEquals(listOf("visible-expense"), dao.observeRecent().first().map { it.id })
+        assertEquals(1_500L, dao.observeMonthlyExpenseTotal("EGP", 2, 0L, 100L).first())
+        assertEquals(listOf("trash-expense"), dao.observeTrash().first().map { it.id })
+
+        assertEquals(1, dao.restoreFromTrash("trash-expense", 100L - 30L * 24L * 60L * 60L * 1000L))
+        assertEquals(2, dao.observeRecent().first().size)
+        assertTrue(dao.observeTrash().first().isEmpty())
+    }
+
+    @Test fun expiredTrashIsPurgedAndCannotBeRestored() = runBlocking {
+        val dao = database.transactionDao()
+        dao.insert(TransactionEntity("expired", "Old item", "EXPENSE", 100L, "EGP", 2, "cash", "general", 1L, 1L, null))
+        dao.moveToTrash("expired", 1_000L)
+        assertEquals(1, dao.purgeExpiredTrash(1_001L))
+        assertEquals(0, dao.restoreFromTrash("expired", 0L))
+        assertEquals(null, dao.findById("expired"))
+    }
+
+    @Test fun weekdayExpenseAggregateUsesLocalWeekdayAndIgnoresTrash() = runBlocking {
+        val dao = database.transactionDao()
+        val zone = java.time.ZoneId.systemDefault()
+        fun epoch(date: String) = java.time.LocalDate.parse(date)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
+        dao.insert(TransactionEntity("mon-a", "Monday A", "EXPENSE", 1_000L, "EGP", 2, "cash", "food", epoch("2026-11-23"), epoch("2026-11-23"), null))
+        dao.insert(TransactionEntity("mon-b", "Monday B", "EXPENSE", 2_000L, "EGP", 2, "cash", "food", epoch("2026-11-16"), epoch("2026-11-16"), null))
+        dao.insert(TransactionEntity("tue-a", "Tuesday", "EXPENSE", 500L, "EGP", 2, "cash", "food", epoch("2026-11-24"), epoch("2026-11-24"), null))
+        dao.insert(TransactionEntity("mon-trash", "Deleted Monday", "EXPENSE", 9_000L, "EGP", 2, "cash", "food", epoch("2026-11-09"), epoch("2026-11-09"), null, isDeleted = true))
+
+        val rows = dao.observeMonthlyExpenseByWeekday(
+            "EGP", 2, epoch("2026-11-01"), epoch("2026-12-01")
+        ).first()
+        val monday = rows.single { it.dayOfWeek == 1 }
+        assertEquals(3_000L, monday.totalExpenseMinor)
+        assertEquals(2, monday.occurrenceDays)
+        assertEquals(500L, rows.single { it.dayOfWeek == 2 }.totalExpenseMinor)
+    }
 
     @Test fun incomeAndExpenseArePersistedInChronologicalOrder() = runBlocking {
         val dao = database.transactionDao()
@@ -118,4 +162,65 @@ class TransactionDaoTest {
         dao.delete("one")
         assertEquals(listOf("two"), dao.observeRecent().first().map { it.id })
     }
+
+    @Test fun categoryExpenseSumsRemainSeparatedByCurrencyAndExponent() = runBlocking {
+        val dao = database.transactionDao()
+        dao.insert(TransactionEntity("egp-food", "Food", "EXPENSE", 12500L, "EGP", 2, "cash", "food", 10L, 10L, null))
+        dao.insert(TransactionEntity("egp-fuel", "Fuel", "EXPENSE", 5000L, "EGP", 2, "cash", "fuel", 20L, 20L, null))
+        dao.insert(TransactionEntity("usd-food", "Food USD", "EXPENSE", 700L, "USD", 2, "usd", "food", 30L, 30L, null))
+        dao.insert(TransactionEntity("egp-income", "Salary", "INCOME", 90000L, "EGP", 2, "cash", "salary", 40L, 40L, null))
+
+        val sums = dao.observeExpenseSumsByCategory().first()
+        assertEquals(3, sums.size)
+        assertEquals(12500L, sums.single { it.categoryId == "food" && it.currencyCode == "EGP" }.totalMinor)
+        assertEquals(700L, sums.single { it.categoryId == "food" && it.currencyCode == "USD" }.totalMinor)
+        assertEquals(5000L, sums.single { it.categoryId == "fuel" && it.currencyCode == "EGP" }.totalMinor)
+        assertEquals(true, sums.all { it.totalMinor > 0L })
+    }
+
+    @Test fun transactionSearchMatchesTitleNotesAndFormattedAmountWithinFilters() = runBlocking {
+        val dao = database.transactionDao()
+        dao.insert(TransactionEntity("coffee", "Cafe", "EXPENSE", 1250L, "EGP", 2, "cash", "food", 100L, 100L, "Morning coffee"))
+        dao.insert(TransactionEntity("fuel", "Fuel", "EXPENSE", 5000L, "EGP", 2, "cash", "transport", 200L, 200L, null))
+        dao.insert(TransactionEntity("usd", "Cafe USD", "EXPENSE", 1250L, "USD", 2, "usd", "food", 300L, 300L, null))
+        dao.insert(TransactionEntity("salary", "Cafe refund", "INCOME", 1250L, "EGP", 2, "cash", "salary", 400L, 400L, null))
+
+        val noteMatches = dao.searchTransactions("coffee", null, null, null, null, null).first()
+        assertEquals(listOf("coffee"), noteMatches.map { it.id })
+
+        val amountMatches = dao.searchTransactions("12.50", null, null, "EXPENSE", "food", "EGP").first()
+        assertEquals(listOf("coffee"), amountMatches.map { it.id })
+
+        val dateMatches = dao.searchTransactions("", 150L, 350L, null, null, null).first()
+        assertEquals(listOf("usd", "fuel"), dateMatches.map { it.id })
+    }
+
+    @Test fun monthlyInsightsAggregateLocalWeekendAndCoffeeSpendWithoutMixingCurrencies() = runBlocking {
+        val dao = database.transactionDao()
+        val zone = java.time.ZoneId.systemDefault()
+        fun at(day: Int) = java.time.LocalDate.of(2026, 11, day)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
+        val start = at(1)
+        val end = java.time.LocalDate.of(2026, 12, 1)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
+        val finance = com.creazzy.rofof.data.repository.RoomFinanceRepository(database)
+        val coffee = finance.createCategory("قهوة", "EXPENSE")
+        val food = finance.createCategory("Food", "EXPENSE")
+        dao.insert(TransactionEntity("insight-coffee-friday", "Coffee", "EXPENSE", 2_000L, "EGP", 2, "cash", coffee, at(20), at(20), null))
+        dao.insert(TransactionEntity("insight-food-saturday", "Groceries", "EXPENSE", 3_000L, "EGP", 2, "cash", food, at(21), at(21), null))
+        dao.insert(TransactionEntity("insight-food-monday", "Lunch", "EXPENSE", 1_000L, "EGP", 2, "cash", food, at(23), at(23), null))
+        dao.insert(TransactionEntity("insight-usd-weekend", "USD coffee", "EXPENSE", 9_000L, "USD", 2, "card", coffee, at(21), at(21), null))
+
+        val snapshot = dao.observeMonthlyInsightsSnapshot("EGP", 2, start, end).first()
+
+        assertEquals(5_000L, snapshot.weekendExpenseMinor)
+        assertEquals(2, snapshot.weekendDays)
+        assertEquals(1_000L, snapshot.weekdayExpenseMinor)
+        assertEquals(1, snapshot.weekdayDays)
+        assertEquals(6_000L, snapshot.totalExpenseMinor)
+        assertEquals(2_000L, snapshot.coffeeExpenseMinor)
+        assertEquals(at(23), snapshot.lastExpenseAtEpochMillis)
+    }
+
+
 }

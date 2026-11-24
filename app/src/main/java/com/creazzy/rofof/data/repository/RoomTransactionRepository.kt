@@ -56,7 +56,24 @@ class RoomTransactionRepository(
         require(transactionDao.update(transaction.toEntity()) == 1) { "Transaction not found" }
     }
 
-    override suspend fun delete(id: String) = transactionDao.delete(id)
+    override suspend fun delete(id: String) {
+        transactionDao.moveToTrash(id, System.currentTimeMillis())
+    }
+
+    fun observeTrash() = transactionDao.observeTrash()
+
+    suspend fun restoreFromTrash(id: String): Boolean {
+        val cutoff = System.currentTimeMillis() - 30L * 24L * 60L * 60L * 1000L
+        return transactionDao.restoreFromTrash(id, cutoff) == 1
+    }
+
+    suspend fun permanentlyDeleteFromTrash(id: String): Boolean =
+        transactionDao.deletePermanently(id) == 1
+
+    suspend fun purgeExpiredTrash() {
+        val cutoff = System.currentTimeMillis() - 30L * 24L * 60L * 60L * 1000L
+        transactionDao.purgeExpiredTrash(cutoff)
+    }
 
     suspend fun ensureDefaults() {
         accountDao.insertIfAbsent(

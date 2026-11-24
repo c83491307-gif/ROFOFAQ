@@ -5,6 +5,8 @@ import com.creazzy.rofof.data.local.BudgetEntity
 import com.creazzy.rofof.data.local.BudgetGoalDao
 import com.creazzy.rofof.data.local.FinancialGoalEntity
 import com.creazzy.rofof.data.local.RofofDatabase
+import com.creazzy.rofof.data.local.CategoryEntity
+import com.creazzy.rofof.data.local.TransactionEntity
 import kotlinx.coroutines.flow.Flow
 import java.util.Currency
 import java.util.UUID
@@ -87,6 +89,62 @@ class RoomBudgetGoalRepository(
             )
         )
         return id
+    }
+
+    /**
+     * Moves money from a matching-currency cash account into a goal envelope.
+     * The ledger expense and goal progress update are atomic and cannot diverge.
+     */
+    suspend fun contributeToGoal(id: String, amountMinor: Long) = database.withTransaction {
+        require(amountMinor > 0L) { "Contribution must be positive" }
+        val goal = dao.findGoal(id) ?: error("Goal not found")
+        require(!goal.isArchived) { "Archived goals cannot receive contributions" }
+        val remaining = (goal.targetAmountMinor - goal.currentAmountMinor).coerceAtLeast(0L)
+        require(amountMinor <= remaining) { "Contribution exceeds the remaining goal amount" }
+        val accountBalance = database.accountDao()
+            .findActiveBalancesForCurrency(goal.currencyCode, goal.currencyExponent)
+            .firstOrNull { it.balanceMinor >= amountMinor }
+            ?: error("No matching-currency account has enough available balance")
+        val account = database.accountDao().findById(accountBalance.id)
+            ?: error("Funding account could not be read")
+
+        val categoryName = "Savings"
+        val existingCategory = database.categoryDao().findByNameAndType(categoryName, "EXPENSE")
+        require(existingCategory?.isArchived != true) { "Savings category is archived" }
+        val categoryId = existingCategory?.id ?: UUID.randomUUID().toString().also { newId ->
+            database.categoryDao().insertIfAbsent(
+                CategoryEntity(
+                    id = newId,
+                    name = categoryName,
+                    transactionType = "EXPENSE",
+                    parentId = null,
+                    isArchived = false,
+                    createdAtEpochMillis = System.currentTimeMillis()
+                )
+            )
+        }.let { database.categoryDao().findByNameAndType(categoryName, "EXPENSE")?.id ?: it }
+
+        val now = System.currentTimeMillis()
+        database.transactionDao().insert(
+            TransactionEntity(
+                id = UUID.randomUUID().toString(),
+                title = "Savings goal: ${goal.title}",
+                transactionType = "EXPENSE",
+                amountMinor = amountMinor,
+                currencyCode = goal.currencyCode,
+                currencyExponent = goal.currencyExponent,
+                accountId = account.id,
+                categoryId = categoryId,
+                occurredAtEpochMillis = now,
+                createdAtEpochMillis = now,
+                notes = "Goal contribution · ${goal.id}"
+            )
+        )
+        val updatedAmount = Math.addExact(goal.currentAmountMinor, amountMinor)
+        require(dao.updateGoal(goal.copy(
+            currentAmountMinor = updatedAmount,
+            updatedAtEpochMillis = now
+        )) == 1) { "Goal could not be updated" }
     }
 
     suspend fun updateGoalProgress(id: String, currentAmountMinor: Long) = database.withTransaction {

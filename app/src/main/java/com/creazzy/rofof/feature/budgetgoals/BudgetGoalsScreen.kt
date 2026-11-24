@@ -206,7 +206,7 @@ fun BudgetGoalsScreen(
             busy = busy,
             onDismiss = { progressGoal = null },
             onSave = { amount ->
-                model.updateGoalProgress(goal.id, amount, goal.currencyExponent)
+                model.contributeToGoal(goal.id, amount, goal.currencyExponent)
                 progressGoal = null
             }
         )
@@ -279,7 +279,7 @@ private fun GoalCard(
                 style = MaterialTheme.typography.bodySmall
             )
             Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                TextButton(onClick = onProgress) { Text(if (ar) "تحديث المدخرات" else "Update saved") }
+                TextButton(onClick = onProgress) { Text(if (ar) "＋ إضافة مبلغ" else "＋ Add contribution") }
                 TextButton(onClick = onArchive) { Text(if (ar) "أرشفة" else "Archive", color = Color(0xFFB45B52)) }
             }
         }
@@ -374,12 +374,33 @@ private fun ProgressDialog(
     onSave: (String) -> Unit
 ) {
     val ar = language == "ar"
-    var amount by remember(goal.id) { mutableStateOf(BigDecimal.valueOf(goal.currentAmountMinor, goal.currencyExponent).toPlainString()) }
+    var amount by remember(goal.id) { mutableStateOf("") }
+    val remaining = (goal.targetAmountMinor - goal.currentAmountMinor).coerceAtLeast(0L)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (ar) "تحديث المدخرات" else "Update saved amount") },
-        text = { OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text(if (ar) "المبلغ المدخر حالياً" else "Current saved amount") }, singleLine = true) },
-        confirmButton = { Button(onClick = { onSave(amount) }, enabled = !busy && amount.isNotBlank()) { Text(if (ar) "حفظ" else "Save") } },
+        title = { Text(if (ar) "إضافة مبلغ إلى الهدف" else "Add to savings goal") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    (if (ar) "المتبقي لتحقيق الهدف: " else "Remaining to target: ") +
+                        money(remaining, goal.currencyCode, goal.currencyExponent, language),
+                    color = PlanMuted
+                )
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { amount = it },
+                    label = { Text(if (ar) "المبلغ المراد إضافته" else "Contribution amount") },
+                    singleLine = true
+                )
+                Text(
+                    if (ar) "سيُخصم المبلغ من حساب نشط بنفس العملة ويُسجل كعملية ادخار."
+                    else "The amount is deducted from an active account in the same currency and recorded in the ledger.",
+                    color = PlanMuted,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        },
+        confirmButton = { Button(onClick = { onSave(amount) }, enabled = !busy && amount.isNotBlank()) { Text(if (ar) "إضافة" else "Contribute") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(if (ar) "إلغاء" else "Cancel") } }
     )
 }
