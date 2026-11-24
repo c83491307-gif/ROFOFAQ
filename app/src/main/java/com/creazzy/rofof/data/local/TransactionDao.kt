@@ -14,7 +14,7 @@ interface TransactionDao {
             COALESCE(SUM(CASE WHEN transactionType = 'INCOME' THEN amountMinor ELSE 0 END), 0) AS incomeMinor,
             COALESCE(SUM(CASE WHEN transactionType = 'EXPENSE' THEN amountMinor ELSE 0 END), 0) AS expenseMinor,
             COUNT(*) AS transactionCount
-        FROM transactions
+        FROM transactions WHERE isDeleted = 0
         GROUP BY currencyCode, currencyExponent
         ORDER BY currencyCode, currencyExponent
     """)
@@ -26,19 +26,19 @@ interface TransactionDao {
             COALESCE(SUM(CASE WHEN transactionType = 'INCOME' THEN amountMinor ELSE 0 END), 0) AS incomeMinor,
             COALESCE(SUM(CASE WHEN transactionType = 'EXPENSE' THEN amountMinor ELSE 0 END), 0) AS expenseMinor
         FROM transactions
-        WHERE occurredAtEpochMillis >= :fromEpochMillis AND occurredAtEpochMillis < :toEpochMillis
+        WHERE isDeleted = 0 AND occurredAtEpochMillis >= :fromEpochMillis AND occurredAtEpochMillis < :toEpochMillis
         GROUP BY month, currencyCode, currencyExponent
         ORDER BY month, currencyCode, currencyExponent
     """)
     fun observeMonthlyCashFlow(fromEpochMillis: Long, toEpochMillis: Long): Flow<List<MonthlyCashFlow>>
 
-    @Query("SELECT * FROM transactions ORDER BY occurredAtEpochMillis DESC LIMIT 250")
+    @Query("SELECT * FROM transactions WHERE isDeleted = 0 ORDER BY occurredAtEpochMillis DESC LIMIT 250")
     fun observeRecent(): Flow<List<TransactionEntity>>
 
-    @Query("SELECT COALESCE(SUM(amountMinor), 0) FROM transactions WHERE transactionType = 'INCOME' AND currencyCode = :currencyCode AND occurredAtEpochMillis >= :fromEpochMillis")
+    @Query("SELECT COALESCE(SUM(amountMinor), 0) FROM transactions WHERE isDeleted = 0 AND transactionType = 'INCOME' AND currencyCode = :currencyCode AND occurredAtEpochMillis >= :fromEpochMillis")
     fun observeIncomeSince(fromEpochMillis: Long, currencyCode: String): Flow<Long>
 
-    @Query("SELECT COALESCE(SUM(amountMinor), 0) FROM transactions WHERE transactionType = 'EXPENSE' AND currencyCode = :currencyCode AND occurredAtEpochMillis >= :fromEpochMillis")
+    @Query("SELECT COALESCE(SUM(amountMinor), 0) FROM transactions WHERE isDeleted = 0 AND transactionType = 'EXPENSE' AND currencyCode = :currencyCode AND occurredAtEpochMillis >= :fromEpochMillis")
     fun observeExpensesSince(fromEpochMillis: Long, currencyCode: String): Flow<Long>
 
     @Query("""
@@ -46,7 +46,7 @@ interface TransactionDao {
             COALESCE(SUM(CASE WHEN transactionType = 'INCOME' THEN amountMinor ELSE 0 END), 0) AS incomeMinor,
             COALESCE(SUM(CASE WHEN transactionType = 'EXPENSE' THEN amountMinor ELSE 0 END), 0) AS expenseMinor
         FROM transactions
-        WHERE currencyCode = :currencyCode AND currencyExponent = :currencyExponent
+        WHERE isDeleted = 0 AND currencyCode = :currencyCode AND currencyExponent = :currencyExponent
     """)
     fun observeTotals(currencyCode: String, currencyExponent: Int): Flow<TransactionTotals>
 
@@ -67,12 +67,24 @@ interface TransactionDao {
     @Update
     suspend fun update(transaction: TransactionEntity): Int
 
-    @Query("DELETE FROM transactions WHERE id = :id")
-    suspend fun delete(id: String)
+    @Query("UPDATE transactions SET isDeleted = 1, deletedAtEpochMillis = :deletedAt WHERE id = :id AND isDeleted = 0")
+    suspend fun moveToTrash(id: String, deletedAt: Long): Int
+
+    @Query("UPDATE transactions SET isDeleted = 0, deletedAtEpochMillis = NULL WHERE id = :id AND isDeleted = 1 AND deletedAtEpochMillis >= :restoreAfter")
+    suspend fun restoreFromTrash(id: String, restoreAfter: Long): Int
+
+    @Query("SELECT * FROM transactions WHERE isDeleted = 1 ORDER BY deletedAtEpochMillis DESC")
+    fun observeTrash(): Flow<List<TransactionEntity>>
+
+    @Query("DELETE FROM transactions WHERE isDeleted = 1 AND deletedAtEpochMillis < :cutoff")
+    suspend fun purgeExpiredTrash(cutoff: Long): Int
+
+    @Query("DELETE FROM transactions WHERE id = :id AND isDeleted = 1")
+    suspend fun deletePermanently(id: String): Int
 
     @Query("""
         SELECT COALESCE(SUM(amountMinor), 0) FROM transactions
-        WHERE transactionType = 'EXPENSE' AND categoryId = :categoryId
+        WHERE isDeleted = 0 AND transactionType = 'EXPENSE' AND categoryId = :categoryId
           AND currencyCode = :currencyCode AND currencyExponent = :currencyExponent
           AND occurredAtEpochMillis >= :fromEpochMillis AND occurredAtEpochMillis < :toEpochMillis
     """)
@@ -103,7 +115,7 @@ interface TransactionDao {
 
     @Query("""
         SELECT COALESCE(SUM(amountMinor), 0) FROM transactions
-        WHERE transactionType = 'EXPENSE'
+        WHERE isDeleted = 0 AND transactionType = 'EXPENSE'
           AND currencyCode = :currencyCode AND currencyExponent = :currencyExponent
           AND occurredAtEpochMillis >= :fromEpochMillis
           AND occurredAtEpochMillis < :toEpochMillis
@@ -143,7 +155,7 @@ interface TransactionDao {
             ), 0) AS lastExpenseAtEpochMillis
         FROM transactions
         LEFT JOIN categories ON categories.id = transactions.categoryId
-        WHERE transactions.transactionType = 'EXPENSE'
+        WHERE transactions.isDeleted = 0 AND transactions.transactionType = 'EXPENSE'
           AND transactions.currencyCode = :currencyCode
           AND transactions.currencyExponent = :currencyExponent
           AND transactions.occurredAtEpochMillis >= :fromEpochMillis
@@ -161,7 +173,7 @@ interface TransactionDao {
         SELECT categoryId, currencyCode, currencyExponent,
             COALESCE(SUM(amountMinor), 0) AS totalMinor
         FROM transactions
-        WHERE transactionType = 'EXPENSE'
+        WHERE isDeleted = 0 AND transactionType = 'EXPENSE'
         GROUP BY categoryId, currencyCode, currencyExponent
         ORDER BY totalMinor DESC
     """)
@@ -173,7 +185,7 @@ interface TransactionDao {
      */
     @Query("""
         SELECT * FROM transactions
-        WHERE (
+        WHERE isDeleted = 0 AND (
             :query = '' OR
             title LIKE '%' || :query || '%' COLLATE NOCASE OR
             COALESCE(notes, '') LIKE '%' || :query || '%' COLLATE NOCASE OR
