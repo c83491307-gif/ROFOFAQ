@@ -20,7 +20,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PurchaseItemEntity::class,
         PurchaseAllocationEntity::class,
         PurchasePaymentEntity::class,
-        AllocationPersonalExpenseLinkEntity::class,\n        PurchaseAllocationDebtLinkEntity::class,
+        AllocationPersonalExpenseLinkEntity::class,
+        PurchaseAllocationDebtLinkEntity::class,
         BudgetEntity::class,
         FinancialGoalEntity::class,
         RecurringRuleEntity::class,
@@ -49,7 +50,20 @@ abstract class RofofDatabase : RoomDatabase() {
         @Volatile
         private var instance: RofofDatabase? = null
 
-        private val MIGRATION_12_13 = object : Migration(12, 13) {\n            override fun migrate(database: SupportSQLiteDatabase) {\n                database.execSQL(\"\"\"CREATE TABLE IF NOT EXISTS purchase_allocation_debt_links (\n                    id TEXT NOT NULL PRIMARY KEY, allocationId TEXT NOT NULL, debtId TEXT NOT NULL,\n                    createdAtEpochMillis INTEGER NOT NULL,\n                    FOREIGN KEY(allocationId) REFERENCES purchase_allocations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,\n                    FOREIGN KEY(debtId) REFERENCES debts(id) ON UPDATE NO ACTION ON DELETE RESTRICT\n                )\"\"\")\n                database.execSQL(\"CREATE UNIQUE INDEX IF NOT EXISTS index_purchase_allocation_debt_links_allocationId ON purchase_allocation_debt_links (allocationId)\")\n                database.execSQL(\"CREATE INDEX IF NOT EXISTS index_purchase_allocation_debt_links_debtId ON purchase_allocation_debt_links (debtId)\")\n            }\n        }\n\n        private val MIGRATION_11_12 = object : Migration(11, 12) {
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""CREATE TABLE IF NOT EXISTS purchase_allocation_debt_links (
+                    id TEXT NOT NULL PRIMARY KEY, allocationId TEXT NOT NULL, debtId TEXT NOT NULL,
+                    createdAtEpochMillis INTEGER NOT NULL,
+                    FOREIGN KEY(allocationId) REFERENCES purchase_allocations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                    FOREIGN KEY(debtId) REFERENCES debts(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )""")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_purchase_allocation_debt_links_allocationId ON purchase_allocation_debt_links (allocationId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_allocation_debt_links_debtId ON purchase_allocation_debt_links (debtId)")
+            }
+        }
+
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE transactions ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
                 database.execSQL("ALTER TABLE transactions ADD COLUMN deletedAtEpochMillis INTEGER")
