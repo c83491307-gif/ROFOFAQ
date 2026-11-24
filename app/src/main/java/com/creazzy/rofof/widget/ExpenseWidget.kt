@@ -2,7 +2,10 @@ package com.creazzy.rofof.widget
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.action.clickable
@@ -12,7 +15,6 @@ import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
-import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.height
@@ -54,6 +56,7 @@ class ExpenseWidget : GlanceAppWidget() {
         }
     }
 
+    @Composable
     private fun WidgetContent(context: Context, total: String) {
         val quickAddIntent = Intent(context, MainActivity::class.java).apply {
             action = MainActivity.ACTION_QUICK_ADD
@@ -63,8 +66,8 @@ class ExpenseWidget : GlanceAppWidget() {
             modifier = GlanceModifier.fillMaxSize()
                 .background(ColorProvider(Color(0xFFFFFFFF)))
                 .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalAlignment = Alignment.Start
+            verticalAlignment = Alignment.Vertical.CenterVertically,
+            horizontalAlignment = Alignment.Horizontal.Start
         ) {
             Text(
                 text = "مصروفات الشهر · EGP",
@@ -80,22 +83,17 @@ class ExpenseWidget : GlanceAppWidget() {
                 )
             )
             Spacer(GlanceModifier.height(8.dp))
-            Row(
+            Text(
+                text = "＋ إضافة سريعة",
                 modifier = GlanceModifier.background(ColorProvider(Color(0xFFE6F2ED)))
                     .clickable(actionStartActivity(quickAddIntent))
                     .padding(horizontal = 12.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "＋ إضافة سريعة",
-                    style = TextStyle(
-                        color = ColorProvider(Color(0xFF126B57)),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                style = TextStyle(
+                    color = ColorProvider(Color(0xFF126B57)),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
                 )
-            }
+            )
         }
     }
 }
