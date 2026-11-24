@@ -15,6 +15,9 @@ interface RecurringDao {
     @Query("SELECT * FROM recurring_drafts ORDER BY scheduledForEpochMillis DESC")
     fun observeDrafts(): Flow<List<RecurringDraftEntity>>
 
+    @Query("SELECT * FROM recurring_drafts WHERE id = :draftId LIMIT 1")
+    suspend fun findDraftById(draftId: String): RecurringDraftEntity?
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertRule(rule: RecurringRuleEntity)
 
