@@ -71,36 +71,69 @@ object TransactionCsvImporter {
         return ImportResult(if (errors.isEmpty()) transactions else emptyList(), errors)
     }
 
-    /** RFC-4180 style comma-separated records, including escaped quotes and embedded newlines. */
+    /** Strict RFC-4180 style records; rejects stray quotes and data after a closing quote. */
     private fun readRows(input: String): List<List<String>> {
         val rows = mutableListOf<List<String>>()
         var row = mutableListOf<String>()
         val cell = StringBuilder()
         var quoted = false
+        var afterQuote = false
         var i = 0
+
+        fun finishCell() {
+            row += cell.toString()
+            cell.setLength(0)
+            afterQuote = false
+        }
+        fun finishRow() {
+            finishCell()
+            if (row.any { it.isNotEmpty() }) rows += row
+            row = mutableListOf()
+        }
+
         while (i < input.length) {
             val ch = input[i]
-            when {
-                quoted && ch == '"' && i + 1 < input.length && input[i + 1] == '"' -> {
-                    cell.append('"'); i++
+            if (quoted) {
+                if (ch == '"') {
+                    if (i + 1 < input.length && input[i + 1] == '"') {
+                        cell.append('"')
+                        i++
+                    } else {
+                        quoted = false
+                        afterQuote = true
+                    }
+                } else {
+                    cell.append(ch)
                 }
-                ch == '"' -> quoted = !quoted
-                !quoted && ch == ',' -> { row += cell.toString(); cell.setLength(0) }
-                !quoted && (ch == '\n' || ch == '\r') -> {
-                    row += cell.toString(); cell.setLength(0)
-                    if (row.any { it.isNotEmpty() }) rows += row
-                    row = mutableListOf()
-                    if (ch == '\r' && i + 1 < input.length && input[i + 1] == '\n') i++
+            } else if (afterQuote) {
+                when (ch) {
+                    ',' -> finishCell()
+                    '\\n' -> finishRow()
+                    '\\r' -> {
+                        finishRow()
+                        if (i + 1 < input.length && input[i + 1] == '\\n') i++
+                    }
+                    else -> throw IllegalArgumentException("Unexpected character after closing quote")
                 }
-                else -> cell.append(ch)
+            } else {
+                when (ch) {
+                    ',' -> finishCell()
+                    '\\n' -> finishRow()
+                    '\\r' -> {
+                        finishRow()
+                        if (i + 1 < input.length && input[i + 1] == '\\n') i++
+                    }
+                    '"' -> {
+                        require(cell.isEmpty()) { "Quote must begin at the start of a field" }
+                        quoted = true
+                    }
+                    else -> cell.append(ch)
+                }
             }
             i++
         }
         require(!quoted) { "Unclosed quoted field" }
-        if (cell.isNotEmpty() || row.isNotEmpty()) {
-            row += cell.toString()
-            if (row.any { it.isNotEmpty() }) rows += row
-        }
+        if (cell.isNotEmpty() || row.isNotEmpty() || afterQuote) finishRow()
         return rows
     }
 }
