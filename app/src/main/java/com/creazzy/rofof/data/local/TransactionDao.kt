@@ -32,6 +32,32 @@ interface TransactionDao {
     """)
     fun observeMonthlyCashFlow(fromEpochMillis: Long, toEpochMillis: Long): Flow<List<MonthlyCashFlow>>
 
+    @Query("""
+        SELECT t.* FROM transactions t
+        WHERE t.isDeleted = 0 AND (
+            :query = '' OR lower(t.title) LIKE '%' || lower(:query) || '%'
+            OR lower(COALESCE(t.notes, '')) LIKE '%' || lower(:query) || '%'
+        )
+        ORDER BY t.occurredAtEpochMillis DESC
+        LIMIT 200
+    """)
+    fun observeSearch(query: String): Flow<List<TransactionEntity>>
+
+    @Query("""
+        SELECT t.categoryId AS categoryId, c.name AS categoryName,
+               t.currencyCode AS currencyCode, t.currencyExponent AS currencyExponent,
+               SUM(t.amountMinor) AS amountMinor
+        FROM transactions t
+        INNER JOIN categories c ON c.id = t.categoryId
+        WHERE t.isDeleted = 0 AND t.transactionType = 'EXPENSE'
+          AND t.occurredAtEpochMillis >= :startEpochMillis
+          AND t.occurredAtEpochMillis < :endEpochMillis
+          AND t.currencyCode = :currencyCode AND t.currencyExponent = :currencyExponent
+        GROUP BY t.categoryId, c.name, t.currencyCode, t.currencyExponent
+        ORDER BY amountMinor DESC
+    """)
+    fun observeCategoryExpenses(startEpochMillis: Long, endEpochMillis: Long, currencyCode: String, currencyExponent: Int): Flow<List<CategoryExpenseTotal>>
+
     /** Average of the five most recent comparable expenses; currencies never mix. */
     @Query("""
         SELECT CAST(AVG(amountMinor) AS INTEGER) FROM (
