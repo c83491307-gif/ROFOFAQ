@@ -19,6 +19,7 @@ import java.util.Locale
 class BudgetGoalViewModel(application: Application) : AndroidViewModel(application) {
     private val database = RofofDatabase.getInstance(application)
     private val repository = RoomBudgetGoalRepository(database)
+    private val budgetOverrunNotifier = BudgetOverrunNotifier(application, database.budgetGoalDao())
     private val month = YearMonth.now()
     private val zone = ZoneId.systemDefault()
     val periodStartEpochMillis = month.atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
@@ -44,6 +45,9 @@ class BudgetGoalViewModel(application: Application) : AndroidViewModel(applicati
             if (id == null) repository.createBudget(
                 categoryId, minor, currencyCode, exponent, periodStartEpochMillis, periodEndEpochMillis
             ) else repository.updateBudget(id, minor)
+            budgetOverrunNotifier.refreshForExpense(
+                categoryId, currencyCode, exponent, periodStartEpochMillis, language.value
+            )
         }
     }
 

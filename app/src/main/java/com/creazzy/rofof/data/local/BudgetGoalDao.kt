@@ -11,6 +11,32 @@ import kotlinx.coroutines.flow.Flow
 interface BudgetGoalDao {
     @Query("""
         SELECT b.id, b.categoryId, b.amountMinor, b.currencyCode, b.currencyExponent,
+               b.periodStartEpochMillis, b.periodEndEpochMillis,
+               COALESCE((
+                   SELECT SUM(t.amountMinor) FROM transactions t
+                   WHERE t.categoryId = b.categoryId
+                     AND t.transactionType = 'EXPENSE'
+                     AND t.currencyCode = b.currencyCode
+                     AND t.currencyExponent = b.currencyExponent
+                     AND t.occurredAtEpochMillis >= b.periodStartEpochMillis
+                     AND t.occurredAtEpochMillis < b.periodEndEpochMillis
+               ), 0) AS spentMinor
+        FROM budgets b
+        WHERE b.categoryId = :categoryId
+          AND b.currencyCode = :currencyCode
+          AND b.currencyExponent = :currencyExponent
+          AND :occurredAtEpochMillis >= b.periodStartEpochMillis
+          AND :occurredAtEpochMillis < b.periodEndEpochMillis
+    """)
+    suspend fun findBudgetAlertsForExpense(
+        categoryId: String,
+        currencyCode: String,
+        currencyExponent: Int,
+        occurredAtEpochMillis: Long
+    ): List<BudgetAlertSnapshot>
+
+    @Query("""
+        SELECT b.id, b.categoryId, b.amountMinor, b.currencyCode, b.currencyExponent,
                b.periodStartEpochMillis, b.periodEndEpochMillis, b.createdAtEpochMillis,
                COALESCE((
                    SELECT SUM(t.amountMinor) FROM transactions t

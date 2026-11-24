@@ -50,3 +50,15 @@ data class FinancialGoalEntity(
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long
 )
+
+
+data class BudgetAlertSnapshot(
+    val id: String,
+    val categoryId: String,
+    val amountMinor: Long,
+    val currencyCode: String,
+    val currencyExponent: Int,
+    val periodStartEpochMillis: Long,
+    val periodEndEpochMillis: Long,
+    val spentMinor: Long
+)

@@ -106,4 +106,28 @@ class BudgetGoalRepositoryTest {
         }
         assertEquals(7, version)
     }
+    @Test fun budgetAlertSnapshotUsesOnlyMatchingCategoryCurrencyAndPeriod() = runBlocking {
+        val account = finance.createAccount("Main", "EGP", 2, 0L)
+        val food = finance.createCategory("Food", "EXPENSE")
+        val travel = finance.createCategory("Travel", "EXPENSE")
+        val start = LocalDate.of(2026, 11, 1).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        val end = LocalDate.of(2026, 12, 1).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        plans.createBudget(food, 10_000L, "EGP", 2, start, end)
+        database.transactionDao().insert(
+            TransactionEntity("alert-food", "Groceries", "EXPENSE", 10_001L, "EGP", 2, account, food, start + 1_000L, start + 1_000L, null)
+        )
+        database.transactionDao().insert(
+            TransactionEntity("alert-travel", "Taxi", "EXPENSE", 90_000L, "EGP", 2, account, travel, start + 2_000L, start + 2_000L, null)
+        )
+        database.transactionDao().insert(
+            TransactionEntity("alert-old", "Old groceries", "EXPENSE", 70_000L, "EGP", 2, account, food, start - 1L, start - 1L, null)
+        )
+
+        val matching = database.budgetGoalDao().findBudgetAlertsForExpense(food, "EGP", 2, start + 3_000L)
+        assertEquals(1, matching.size)
+        assertEquals(10_001L, matching.single().spentMinor)
+        assertTrue(database.budgetGoalDao().findBudgetAlertsForExpense(food, "EGP", 2, end).isEmpty())
+        assertTrue(database.budgetGoalDao().findBudgetAlertsForExpense(food, "USD", 2, start + 3_000L).isEmpty())
+    }
+
 }
