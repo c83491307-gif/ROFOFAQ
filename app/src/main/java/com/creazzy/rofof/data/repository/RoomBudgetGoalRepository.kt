@@ -110,6 +110,7 @@ class RoomBudgetGoalRepository(
 
         val categoryName = "Savings"
         val existingCategory = database.categoryDao().findByNameAndType(categoryName, "EXPENSE")
+        require(existingCategory?.isArchived != true) { "Savings category is archived" }
         val categoryId = existingCategory?.id ?: UUID.randomUUID().toString().also { newId ->
             database.categoryDao().insertIfAbsent(
                 CategoryEntity(
