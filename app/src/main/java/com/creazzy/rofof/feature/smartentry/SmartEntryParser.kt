@@ -65,6 +65,8 @@ class SmartEntryParser(
                 when (ch) {
                     in '٠'..'٩' -> ('0'.code + (ch.code - '٠'.code)).toChar()
                     in '۰'..'۹' -> ('0'.code + (ch.code - '۰'.code)).toChar()
+                    '\u066B' -> '.'
+                    '\u066C' -> ','
                     else -> ch
                 }
             )
