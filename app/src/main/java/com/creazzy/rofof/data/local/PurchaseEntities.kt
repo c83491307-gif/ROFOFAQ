@@ -102,9 +102,10 @@ data class ParticipantSettlementRow(
     val participantId: String,
     val displayName: String,
     val allocatedMinor: Long,
-    val paidMinor: Long
+    val paidMinor: Long,
+    val debtMinor: Long
 ) {
-    val balanceMinor: Long get() = Math.subtractExact(allocatedMinor, paidMinor)
+    val balanceMinor: Long get() = Math.subtractExact(Math.subtractExact(allocatedMinor, paidMinor), debtMinor)
 }
 
 data class PurchaseAllocationView(
@@ -114,7 +115,8 @@ data class PurchaseAllocationView(
     val participantId: String,
     val participantName: String,
     val amountMinor: Long,
-    val personalTransactionId: String?
+    val personalTransactionId: String?,
+    val debtId: String?
 )
 
 @Entity(
