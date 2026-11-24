@@ -1,51 +1,60 @@
 # README Requirements — Applied Android Plan
 
-## Source
-This plan is derived from the repository's original `main/README.md` roadmap. It preserves its product intent while applying the user's later architecture decision: native Android first, Kotlin + Jetpack Compose + Room, offline-first, with backend/sync deferred and disabled.
+## Source and authority
+
+This plan preserves the original product intent from the repository's initial README while applying the accepted architecture decision: native Android first, Kotlin + Jetpack Compose + Room, offline-first, with backend/sync deferred and disabled.
+
+The current integration-branch implementation status is summarized here. Source presence is not equivalent to a successful latest-head CI run; see the phase reports and GitHub Actions for verification evidence.
 
 ## Architecture resolution
-- Android native replaces the README's alternative Flutter/mobile proposal for the current delivery.
-- Room/SQLite is the authoritative source for device-local data.
-- No login, backend, banking sync, cloud storage or INTERNET permission is required for core flows.
+
+- Native Android is the current client; the original Flutter/mobile and backend sketches are not the current implementation plan.
+- Room/SQLite is authoritative for device-local state.
+- Core flows do not require login, backend, banking sync, cloud storage or network access.
 - Money is integer minor units with ISO currency code and exponent. Currency totals are never combined across currencies without an explicit conversion operation.
-- Web/PWA is a later client, not a prerequisite for Android delivery.
+- Web/PWA is a later optional client, not a prerequisite for Android delivery.
+- OCR and recurring rules produce reviewable drafts, not silently posted transactions.
 
-## Original README roadmap mapped to delivery
+## Original README roadmap mapped to current integration-branch source
 
-| README area | Applied Android implementation plan | Status |
+| README area | Current source delivery | Status / boundary |
 |---|---|---|
-| Quick transaction | Create/read/update/delete dated income and expense transactions with amount and category | Partial: add/read/delete expense exists; income/edit/date picker pending |
-| Multiple accounts | Cash, card, savings and custom accounts with independent balances | Implemented: create local accounts, opening balances, selected-account transactions and live per-account balance projection |
-| Categories/subcategories | Local editable two-level category tree | Implemented: income/expense categories and two-level create flow; rename/archive UI pending |
-| Transfers | Atomic account-to-account transfer, excluded from income/expense totals | Implemented: same-currency transfer table, transactional insert, paired balance impact and currency mismatch rejection |
-| Recurring/templates | Rules create reviewable drafts; no silent posting | Pending |
-| Splits | Exact minor-unit split with deterministic visible remainder | Pending |
-| Receipt images | User-selected local attachments, optional | Pending |
-| Tags/location | Optional local metadata; location disabled unless explicitly enabled | Pending |
-| Budgets/goals/loans | Local budgets, savings goals and debt/loan ledgers | Pending |
-| Alerts/reports | Local threshold alerts, category/monthly charts, cash flow, net worth, forecasts | Pending |
-| Search/import/export | Search and CSV import/export first; other formats only after parser validation | Pending |
-| Banking sync / multi-user | Optional future extension only; never enabled implicitly | Deferred |
-| Security | App PIN/biometric lock and encrypted local data, designed without weakening offline core | Pending |
-| Web/PWA | Separate later client using explicit optional API boundary | Deferred |
-| Dark/light and localization | Arabic/English, RTL/LTR, light/dark/system | Partial: Arabic/English and RTL/LTR dashboard exists |
-| Receipt OCR / AI charts | Optional; OCR output remains a draft until human confirmation | Pending |
+| Quick transaction | Room-backed income/expense ledger, account/category selection, totals and confirmed deletion | Implemented core flow; advanced edit/date/receipt workflows remain follow-up work |
+| Multiple accounts | Local accounts, opening balances, selected-account transactions and live balances | Implemented |
+| Categories/subcategories | Income/expense categories, two-level category flow, rename/archive and historical retention | Implemented |
+| Transfers | Atomic same-currency account transfers, excluded from income/expense totals | Implemented; cross-currency transfer is rejected |
+| Recurring/templates | Rules generate reviewable drafts; Phase 9 provides guarded atomic approve/skip actions | Implemented; no automatic posting |
+| Splits/shared purchases | Shared purchase sessions, participants, exact allocations, payments, settlement and explicit personal-expense source links | Implemented; see Phase 4 report |
+| Receipt images / tags / location | Optional local attachments and metadata | Not part of the current delivered scope |
+| Budgets/goals | Local category budgets, manually maintained savings goals and budget-overrun notifications | Implemented; no bank sync |
+| Loans/debts | Local debt entities, repository and management screen | Implemented source foundation; review the debt phase/source tests before release claims |
+| Alerts/reports | Local budget alerts and monthly category report | Implemented; initial monthly category report is EGP-only; cash-flow/forecast UI remains follow-up |
+| Search | Case-insensitive transaction title/notes search | Implemented; result set is capped at 200 |
+| CSV export | User-initiated SAF export, UTF-8 BOM, currency metadata, UTC timestamps, CSV quoting and formula-prefix neutralization | Implemented for non-deleted ledger transactions only |
+| CSV import | Parser/import service and tests are present | End-user preview, validation and explicit commit integration must be verified before marking the complete import workflow done |
+| Backup/restore | Local backup archive foundation and tests are present | Full validated restore/recovery workflow remains a gate; never overwrite the live database before candidate validation |
+| Banking sync / multi-user | Optional future extension only | Deferred; never enabled implicitly |
+| Security | Biometric dependency exists; app-lock and database encryption are not yet delivered as a complete security workflow | Pending |
+| Web/PWA | Separate later client using an explicit optional API boundary | Deferred |
+| Dark/light and localization | Arabic/English and RTL/LTR dashboard and feature screens | Implemented for current screens; audit new screens before release |
+| Receipt OCR / AI charts | Optional future feature | Deferred; OCR must remain reviewable and must not auto-post financial transactions |
 
 ## Non-negotiable data rules
+
 1. Shared purchase allocations are not personal expenses until the user explicitly confirms a transfer.
 2. Transfers between accounts are not income or expenses.
 3. Recurring rules and OCR create drafts, not posted transactions.
 4. Every amount stores integer minor units plus currency code/exponent.
 5. No implicit cross-currency netting.
 6. Historical records retain the category/account labels needed to interpret past activity.
-7. Destructive actions require confirmation; backup/restore must be validated before replacing local data.
+7. Destructive restore operations require staged validation, integrity checks and a recoverable rollback path.
 
-## Current verified scope
-The existing implementation has a Room-backed personal expense vertical slice and bilingual dashboard. It is not yet the complete README roadmap. No build/test success is claimed for the latest UI branch until CI completes on its exact head commit.
+## Verification evidence
 
-## Delivery order
-1. Transaction ledger, accounts and categories.
-2. Shared purchases, participants, exact allocations and settlement.
-3. Budgets, goals, recurring drafts and reports.
-4. Import/export, backup/restore and security hardening.
-5. Optional OCR and optional web/sync adapters.
+- [Phase 7 — Reports and Transaction Search](../implementation/PHASE_7_REPORTS_AND_SEARCH.md)
+- [Phase 8 — Transaction CSV Export](../implementation/PHASE_8_CSV_EXPORT.md)
+- [Phase 9 — Recurring Draft Review and Approval](../implementation/PHASE_9_RECURRING_APPROVAL.md)
+- [Architecture decisions](../architecture/DECISIONS.md)
+- [APK build and branch integration](../implementation/APK_BUILD_AND_BRANCH_INTEGRATION.md)
+
+These reports define the feature boundaries. A successful test/build on the exact current branch head is still required before release or merge approval.
