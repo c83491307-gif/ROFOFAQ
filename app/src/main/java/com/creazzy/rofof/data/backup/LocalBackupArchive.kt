@@ -29,7 +29,7 @@ object LocalBackupArchive {
     fun encode(databaseBytes: ByteArray): ByteArray {
         require(databaseBytes.size in 100..MAX_DATABASE_BYTES) { "Database size is outside supported limits" }
         val version = readUserVersion(databaseBytes)
-        require(version in 1..7) { "Unsupported Room schema version" }
+        require(version in 1..8) { "Unsupported Room schema version" }
         val digest = sha256(databaseBytes)
         val manifest = "format=$FORMAT_VERSION\nroom_version=$version\nsha256=$digest\n"
         return ByteArrayOutputStream().use { output ->
@@ -81,7 +81,7 @@ object LocalBackupArchive {
             "Backup does not contain a valid SQLite database header"
         }
         val version = readUserVersion(bytes)
-        require(version in 1..7 && metadata["room_version"] == version.toString()) {
+        require(version in 1..8 && metadata["room_version"] == version.toString()) {
             "Room schema version mismatch or unsupported version"
         }
         require(metadata["sha256"] == sha256(bytes)) { "Backup checksum mismatch" }
