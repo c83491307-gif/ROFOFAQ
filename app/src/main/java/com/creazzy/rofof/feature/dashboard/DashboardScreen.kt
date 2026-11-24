@@ -557,7 +557,7 @@ private fun AddTransactionDialog(
                 }
                 if (initialTransaction == null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        LocalVoiceInputButton(onRecognized = { spoken ->
+                        LocalVoiceInputButton(locale = if (language == "ar") "ar-EG" else "en-US", onRecognized = { spoken ->
                             smartCommand = spoken
                             val parsed = smartParser.parse(spoken)
                             parsed.amountText?.let { amount = it }
@@ -566,7 +566,7 @@ private fun AddTransactionDialog(
                                 type = suggestion.transactionType
                             }
                         })
-                        SmartPasteAction(onAccept = { pasted ->
+                        SmartPasteAction(language = language, onAccept = { pasted ->
                             smartCommand = pasted.sourcePreview
                             pasted.amountText.let { amount = it }
                             pasted.parsedEntry.category?.let { suggestion ->
