@@ -101,12 +101,12 @@ class RoomBudgetGoalRepository(
         require(!goal.isArchived) { "Archived goals cannot receive contributions" }
         val remaining = (goal.targetAmountMinor - goal.currentAmountMinor).coerceAtLeast(0L)
         require(amountMinor <= remaining) { "Contribution exceeds the remaining goal amount" }
-        val account = database.accountDao().findActiveAccountForCurrency(
-            goal.currencyCode, goal.currencyExponent
-        ) ?: error("No active account matches the goal currency")
-        val balance = database.accountDao().findBalance(account.id)?.balanceMinor
-            ?: error("Account balance could not be read")
-        require(balance >= amountMinor) { "Insufficient account balance" }
+        val accountBalance = database.accountDao()
+            .findActiveBalancesForCurrency(goal.currencyCode, goal.currencyExponent)
+            .firstOrNull { it.balanceMinor >= amountMinor }
+            ?: error("No matching-currency account has enough available balance")
+        val account = database.accountDao().findById(accountBalance.id)
+            ?: error("Funding account could not be read")
 
         val categoryName = "Savings"
         val existingCategory = database.categoryDao().findByNameAndType(categoryName, "EXPENSE")
