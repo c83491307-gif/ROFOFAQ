@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,10 +85,10 @@ fun DashboardScreen(
     val isArabic = language == "ar"
     val direction = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
     val words = if (isArabic) Arabic else English
-    var showAdd by remember { mutableStateOf(false) }
-    var showAccounts by remember { mutableStateOf(false) }
-    var showTransfer by remember { mutableStateOf(false) }
-    var showCategories by remember { mutableStateOf(false) }
+    var showAdd by rememberSaveable { mutableStateOf(false) }
+    var showAccounts by rememberSaveable { mutableStateOf(false) }
+    var showTransfer by rememberSaveable { mutableStateOf(false) }
+    var showCategories by rememberSaveable { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<LedgerTransaction?>(null) }
     var pendingEdit by remember { mutableStateOf<LedgerTransaction?>(null) }
 
@@ -462,17 +463,17 @@ private fun AddTransactionDialog(
     initialCategoryName: String = "",
     isSaving: Boolean = false
 ) {
-    var title by remember(initialTransaction?.id) { mutableStateOf(initialTransaction?.title.orEmpty()) }
-    var amount by remember(initialTransaction?.id) {
+    var title by rememberSaveable(initialTransaction?.id) { mutableStateOf(initialTransaction?.title.orEmpty()) }
+    var amount by rememberSaveable(initialTransaction?.id) {
         mutableStateOf(initialTransaction?.let { BigDecimal.valueOf(it.amountMinor, it.currencyExponent).toPlainString() }.orEmpty())
     }
-    var category by remember(initialTransaction?.id) { mutableStateOf(initialCategoryName) }
-    var smartCommand by remember(initialTransaction?.id) { mutableStateOf("") }
-    var smartSuggestion by remember(initialTransaction?.id) { mutableStateOf<String?>(null) }
-    var appliedReviewText by remember(initialTransaction?.id) { mutableStateOf<String?>(null) }
+    var category by rememberSaveable(initialTransaction?.id) { mutableStateOf(initialCategoryName) }
+    var smartCommand by rememberSaveable(initialTransaction?.id) { mutableStateOf("") }
+    var smartSuggestion by rememberSaveable(initialTransaction?.id) { mutableStateOf<String?>(null) }
+    var appliedReviewText by rememberSaveable(initialTransaction?.id) { mutableStateOf<String?>(null) }
     val smartParser = remember(learnedKeywords) { SmartEntryParser(learnedKeywords = learnedKeywords) }
-    var type by remember(initialTransaction?.id) { mutableStateOf(initialTransaction?.transactionType ?: "EXPENSE") }
-    var accountId by remember(accounts, initialTransaction?.id) { mutableStateOf(initialTransaction?.accountId ?: accounts.firstOrNull()?.id.orEmpty()) }
+    var type by rememberSaveable(initialTransaction?.id) { mutableStateOf(initialTransaction?.transactionType ?: "EXPENSE") }
+    var accountId by rememberSaveable(accounts, initialTransaction?.id) { mutableStateOf(initialTransaction?.accountId ?: accounts.firstOrNull()?.id.orEmpty()) }
     var accountMenu by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialTransaction?.occurredAtEpochMillis ?: System.currentTimeMillis())
