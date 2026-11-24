@@ -92,9 +92,9 @@ object LocalBackupArchive {
         require(bytes.size >= 100 && bytes.copyOfRange(0, SQLITE_HEADER.length).toString(Charsets.US_ASCII) == SQLITE_HEADER) {
             "Not a SQLite database"
         }
-        return (bytes[60].toInt() and 0xff shl 24) or
-            (bytes[61].toInt() and 0xff shl 16) or
-            (bytes[62].toInt() and 0xff shl 8) or
+        return ((bytes[60].toInt() and 0xff) shl 24) or
+            ((bytes[61].toInt() and 0xff) shl 16) or
+            ((bytes[62].toInt() and 0xff) shl 8) or
             (bytes[63].toInt() and 0xff)
     }
 
