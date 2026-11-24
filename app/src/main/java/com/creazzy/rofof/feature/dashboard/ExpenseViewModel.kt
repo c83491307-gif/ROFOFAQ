@@ -27,6 +27,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import java.math.BigDecimal
@@ -95,8 +99,28 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val trash = repository.observeTrash()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val transactions = repository.observeRecent()
+    private val transactionRefresh = MutableStateFlow(0)
+    private val _transactionsLoaded = MutableStateFlow(false)
+    val transactionsLoaded = _transactionsLoaded.asStateFlow()
+    private val _transactionsLoadError = MutableStateFlow<String?>(null)
+    val transactionsLoadError = _transactionsLoadError.asStateFlow()
+
+    val transactions = transactionRefresh
+        .flatMapLatest {
+            repository.observeRecent()
+                .onStart { _transactionsLoaded.value = false; _transactionsLoadError.value = null }
+                .onEach { _transactionsLoaded.value = true; _transactionsLoadError.value = null }
+                .catch { error ->
+                    _transactionsLoaded.value = true
+                    _transactionsLoadError.value = localizeFinanceError(error.message.orEmpty())
+                    emit(emptyList())
+                }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun retryTransactions() {
+        transactionRefresh.value = transactionRefresh.value + 1
+    }
 
     val categories = database.categoryDao().observeActive()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
