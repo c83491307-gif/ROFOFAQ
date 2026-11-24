@@ -96,4 +96,53 @@ interface TransactionDao {
 
     @Query("SELECT COUNT(*) FROM transactions WHERE categoryId = :categoryId")
     suspend fun countForCategory(categoryId: String): Int
+
+    /** Lifetime expense totals, kept separate by currency and exponent. */
+    @Query("""
+        SELECT categoryId, currencyCode, currencyExponent,
+            COALESCE(SUM(amountMinor), 0) AS totalMinor
+        FROM transactions
+        WHERE transactionType = 'EXPENSE'
+        GROUP BY categoryId, currencyCode, currencyExponent
+        ORDER BY totalMinor DESC
+    """)
+    fun observeExpenseSumsByCategory(): Flow<List<CategoryExpenseSum>>
+
+    /**
+     * Local transaction search. Amount matching supports both the stored minor-unit
+     * integer and its decimal display representation; date upper bound is exclusive.
+     */
+    @Query("""
+        SELECT * FROM transactions
+        WHERE (
+            :query = '' OR
+            title LIKE '%' || :query || '%' COLLATE NOCASE OR
+            COALESCE(notes, '') LIKE '%' || :query || '%' COLLATE NOCASE OR
+            CAST(amountMinor AS TEXT) LIKE '%' || :query || '%' OR
+            printf('%.*f', currencyExponent,
+                amountMinor / CASE currencyExponent
+                    WHEN 0 THEN 1.0
+                    WHEN 1 THEN 10.0
+                    WHEN 2 THEN 100.0
+                    WHEN 3 THEN 1000.0
+                    ELSE 100.0
+                END
+            ) LIKE '%' || :query || '%'
+        )
+        AND (:fromEpochMillis IS NULL OR occurredAtEpochMillis >= :fromEpochMillis)
+        AND (:toEpochMillis IS NULL OR occurredAtEpochMillis < :toEpochMillis)
+        AND (:transactionType IS NULL OR transactionType = :transactionType)
+        AND (:categoryId IS NULL OR categoryId = :categoryId)
+        AND (:currencyCode IS NULL OR currencyCode = :currencyCode)
+        ORDER BY occurredAtEpochMillis DESC, createdAtEpochMillis DESC
+    """)
+    fun searchTransactions(
+        query: String,
+        fromEpochMillis: Long? = null,
+        toEpochMillis: Long? = null,
+        transactionType: String? = null,
+        categoryId: String? = null,
+        currencyCode: String? = null
+    ): Flow<List<TransactionEntity>>
+
 }
