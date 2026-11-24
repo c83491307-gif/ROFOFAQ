@@ -7,7 +7,7 @@ import org.junit.Test
 class FinancialIntelligenceTest {
     private val egp = MoneyKey("EGP", 2)
     private fun sample(id: String, amount: Long, day: Int, category: String = "food", title: String = "Groceries") =
-        ExpenseSample(id, title, category, amount, egp, LocalDate.of(2026, 1, day))
+        ExpenseSample(id, title, category, amount, egp, LocalDate.of(2026, 1, 1).plusDays((day - 1).toLong()))
 
     @Test fun anomalyDetectionRequiresComparableHistoryAndCurrency() {
         val history = (1..5).map { sample("h$it", 1000L, it) }

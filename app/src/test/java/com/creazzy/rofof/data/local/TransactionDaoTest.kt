@@ -38,7 +38,8 @@ class TransactionDaoTest {
         val top = dao.observeTopExpenseCategories().first()
         assertEquals(2, top.size)
         assertEquals(coffee, top.first().categoryId)
-        assertEquals(6L, top.first().transactionCount)
+        // Category frequency intentionally counts all currencies; the USD expense is comparable for frequency only.
+        assertEquals(7L, top.first().transactionCount)
     }
 
     @Test fun softDeletedTransactionLeavesLedgerTotalsAndCanBeRestoredForThirtyDays() = runBlocking {
