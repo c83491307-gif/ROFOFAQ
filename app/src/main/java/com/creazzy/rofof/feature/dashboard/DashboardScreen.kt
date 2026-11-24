@@ -559,6 +559,7 @@ private fun AddTransactionDialog(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         LocalVoiceInputButton(locale = if (language == "ar") "ar-EG" else "en-US", onRecognized = { spoken ->
                             smartCommand = spoken
+                            title = spoken
                             val parsed = smartParser.parse(spoken)
                             parsed.amountText?.let { amount = it }
                             parsed.category?.let { suggestion ->
@@ -568,6 +569,7 @@ private fun AddTransactionDialog(
                         })
                         SmartPasteAction(language = language, onAccept = { pasted ->
                             smartCommand = pasted.sourcePreview
+                            title = pasted.merchantText ?: pasted.sourcePreview
                             pasted.amountText.let { amount = it }
                             pasted.parsedEntry.category?.let { suggestion ->
                                 category = if (language == "ar") suggestion.categoryNameArabic else suggestion.categoryNameEnglish
