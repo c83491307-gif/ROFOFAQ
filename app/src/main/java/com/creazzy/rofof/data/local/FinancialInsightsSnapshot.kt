@@ -9,3 +9,10 @@ data class FinancialInsightsSnapshot(
     val coffeeExpenseMinor: Long,
     val lastExpenseAtEpochMillis: Long
 )
+
+data class WeekdayExpense(
+    /** SQLite local-time weekday: Sunday=0 through Saturday=6. */
+    val dayOfWeek: Int,
+    val totalExpenseMinor: Long,
+    val occurrenceDays: Int
+)
