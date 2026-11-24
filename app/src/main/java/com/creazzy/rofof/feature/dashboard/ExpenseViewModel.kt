@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.UUID
@@ -105,6 +106,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val _transactionsLoadError = MutableStateFlow<String?>(null)
     val transactionsLoadError = _transactionsLoadError.asStateFlow()
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val transactions = transactionRefresh
         .flatMapLatest {
             repository.observeRecent()
