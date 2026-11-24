@@ -31,7 +31,8 @@ class TransactionCsvExporterTest {
             TransactionEntity("id", "=HYPERLINK(\"https://example.invalid\")", "EXPENSE", 100L,
                 "EGP", 2, "cash", "food", 0L, 0L, "  @SUM(A1:A2)")
         ))
-        assertTrue(csv.contains("\"'=HYPERLINK(\"\"https://example.invalid\"")\""))
+        assertTrue(csv.contains("\"'=HYPERLINK("))
+        assertTrue(csv.contains("\"\"https://example.invalid\"\""))
         assertTrue(csv.contains("\"'  @SUM(A1:A2)\""))
     }
 
