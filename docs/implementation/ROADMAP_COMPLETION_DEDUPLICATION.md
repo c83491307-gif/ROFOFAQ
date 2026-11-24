@@ -1,28 +1,28 @@
 # ROFOF roadmap completion — deduplicated execution register
 
-**Working branch:** `feat/rofof-roadmap-completion`  
-**Baseline:** `feat/rofof-shared-purchases` at the Phase 10 merge commit  
+**Working branch:** `feat/rofof-apk-integration`  
+**Baseline:** cumulative native Android integration branch  
 **Policy:** preserve delivered functionality; implement only missing scope; do not silently replace or duplicate existing features.
 
-## Baseline verified from source
+## Current source baseline
 
-| Screenshot path | Existing source evidence | Deduplicated disposition |
+| Area | Current source evidence | Remaining work / disposition |
 |---|---|---|
-| Backup and restore | No backup/restore implementation found in the inspected app source or Phase 0–10 delivery map | Implement validated, user-initiated backup/restore; never overwrite live DB before validation |
-| CSV import and validation | Phase 8 has safe CSV export only; no importer found | Add import parser, preview/validation, duplicate handling and explicit commit; retain export |
-| Database encryption | Room v7 database opens without an encryption helper or SQLCipher dependency in app/build.gradle.kts | Add an explicit local encryption design and migration/recovery plan; never invent a passphrase or silently encrypt existing user DB |
-| PIN and biometric lock | Not present in inspected dependencies or implementation map | Add local app-lock flow and Android biometric integration |
-| Room migrations and compatibility | Room v7 has migrations 1→2 through 6→7; no explicit on-disk upgrade test was found in the inspected implementation report | Preserve migrations; add real on-disk upgrade coverage for supported historical versions and integrity checks |
-| Cash-flow reports | Phase 7 PR contains monthly category reporting/search, but that PR is still a separate unmerged draft; cash-flow view is not in cumulative Phase 10 branch | Integrate/extend reporting without rewriting monthly category reports |
-| Multi-currency reports | Money stores currency code/exponent and rejects implicit conversion; no multi-currency report was found | Report each currency/exponent independently; no cross-currency sum without explicit FX rates |
-| Financial forecasts | Not present in the cumulative branch | Add deterministic forecast estimates with assumptions and no mutation of ledger |
-| Debt and loans | No debt/loan entities or workflow found | Add principal, rate/terms, due dates, repayments and balance invariants |
-| Goals and savings | Phase 5 already has manually maintained savings goals, validation, archive retention and Room v6 migration | Preserve; only add missing goal analytics or integration if supported by tests |
-| Performance and memory | No dedicated performance/memory test evidence found | Profile query/paging/recomposition and add regression checks; avoid speculative caching |
-| Android UI tests | Compose/Robolectric UI tests exist for some account/category and dashboard flows | Extend coverage to the newly implemented workflows; do not duplicate existing tests |
-| Data-loss/recovery tests | Migration and repository tests exist, but explicit backup restore/corruption/recovery tests are not evidenced | Add recovery and integrity tests around the new backup/restore and migration paths |
-| RTL/LTR and localization | Arabic/English RTL/LTR dashboard and feature screens already exist | Audit all new screens/strings and add locale/direction regression coverage; do not rebuild existing localization |
-| Release APK signing | Release build type exists, but no release signing configuration/workflow or signed artifact evidence found | Add CI signing only through GitHub Actions secrets; never commit keys or passwords |
+| Backup and restore | `LocalBackupArchive` and archive tests are present | Complete the user-facing restore flow, staged schema/integrity/foreign-key validation, rollback and recovery tests. Never overwrite the live DB before candidate validation. |
+| CSV import and validation | `TransactionCsvImporter`, import service and tests are present | Verify and complete user-facing preview, validation, duplicate handling and explicit atomic commit. Retain the existing safe CSV export. |
+| Database encryption | Room database is local; no SQLCipher integration or safe key lifecycle is evidenced | Design explicit encryption, passphrase/key recovery and migration before changing existing user databases. |
+| PIN and biometric lock | Biometric dependency is present; complete app-lock flow is not evidenced | Implement local app lock and Android biometric integration without storing secrets in plaintext. |
+| Room migrations and compatibility | Room schema is version 13 with migrations 1→2 through 12→13 | Add real on-disk upgrade tests across supported historical versions and integrity checks. Preserve all existing migrations. |
+| Cash-flow reports | Phase 7 provides monthly category reporting and transaction search; deterministic forecast engine source/tests exist | Complete cash-flow and forecast UI. Keep currencies separate and label estimates clearly. |
+| Multi-currency reports | Money stores integer minor units, currency code and exponent | Report each currency/exponent independently; no cross-currency sum without explicit FX rates. |
+| Financial forecasts | Deterministic forecast engine and tests are present | Integrate the engine into a user-facing forecast UI with assumptions; never mutate the ledger. |
+| Debt and loans | Debt entities, DAO/repository and management screen are present | Review balances, repayment invariants, lifecycle and UI coverage before release. Do not rebuild existing foundations. |
+| Goals and savings | Phase 5 includes manually maintained savings goals and Room persistence | Preserve; add only missing analytics or integration supported by tests. |
+| Performance and memory | No dedicated performance/memory test evidence is recorded | Profile query/paging/recomposition and add regression checks; avoid speculative caching. |
+| Android UI tests | Compose/Robolectric UI tests exist for dashboard/account/category flows | Extend coverage to import/restore, debt, reports and recurring workflows where user-facing flows exist. |
+| Data-loss/recovery tests | Archive and repository tests exist; complete restore/recovery coverage is not evidenced | Add corruption, rollback, migration and staged restore tests. |
+| RTL/LTR and localization | Arabic/English RTL/LTR dashboard and feature screens exist | Audit all new screens/strings and add locale/direction regression coverage. |
+| Release APK signing | Release build type exists, but no release signing configuration/workflow or signed artifact evidence found | Add secret-backed signing only after all gates pass; never commit keys or passwords. |
 
 ## Non-negotiable invariants
 
@@ -38,21 +38,20 @@
 
 ## Execution order
 
-1. Close the separate already-implemented Phase 7 reports/search and Phase 8 CSV export work into the cumulative delivery only after checking exact-head CI and resolving branch conflicts; do not reimplement them.
-2. Add CSV import and preview/validation.
-3. Add backup/restore with staged validation and recovery tests.
-4. Add encryption and PIN/biometric lock with safe key lifecycle and explicit migration.
-5. Add debt/loan management and cash-flow/multi-currency/forecast analytics.
-6. Add Room historical upgrade tests, UI/recovery/performance/localization regression coverage.
-7. Add secret-backed release signing and produce a signed release artifact only after all gates pass.
+1. Complete CSV import preview/validation/commit and backup/restore validation without duplicating the existing parser/archive foundations.
+2. Add encryption and PIN/biometric lock with safe key lifecycle and explicit migration.
+3. Complete debt/loan lifecycle and cash-flow/forecast analytics UI.
+4. Add Room historical upgrade tests, UI/recovery/performance/localization regression coverage.
+5. Add secret-backed release signing and produce a signed release artifact only after all gates pass.
 
 ## Current execution state
 
-- [x] Inspected repository default branch, Phase 10 PR and CI evidence.
-- [x] Confirmed Phase 10 merged into `feat/rofof-shared-purchases`; it is not yet merged to `main`.
-- [x] Created this isolated working branch from the Phase 10 cumulative branch.
-- [ ] Remaining implementation and verification gates above are not yet complete.
+- [x] Reconciled Phase 7 monthly category reports/search into the cumulative integration source.
+- [x] Reconciled Phase 8 safe ledger CSV export into the cumulative integration source.
+- [x] Reconciled Phase 9 recurring draft approval/skip while preserving day-of-month scheduling.
+- [x] Confirmed Phase 10 budget-overrun source/tests are already present in the cumulative branch.
+- [ ] Remaining work and verification gates above are not yet complete.
 
-## CI resilience note (2026-11-24)
+## CI resilience note
 
-The first run after correcting Kotlin CSV escape literals compiled the Kotlin sources successfully, then failed before test execution because Maven Central returned HTTP 429 while resolving Robolectric's `nativeruntime-dist-compat` artifact. This is an external dependency-rate-limit failure, not a test assertion failure. The Android CI workflow now retries unit tests and emulator instrumentation with bounded backoff, and retries lint/APK assembly to reuse the populated Gradle cache. A passing result is still required before merge or release.
+A previous verification attempt compiled Kotlin sources, then failed before test execution because Maven Central returned HTTP 429 while resolving a Robolectric artifact. This is an external dependency-rate-limit failure, not a test assertion failure. The Android CI workflow now retries unit tests and emulator instrumentation with bounded backoff. A passing result is still required on the exact branch head before merge or release.
