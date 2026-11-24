@@ -49,27 +49,27 @@ fun SuggestedAmountChip(label: String, onApply: () -> Unit, modifier: Modifier =
 
 /** Clipboard is inspected only after an explicit user tap; accepting the suggestion remains explicit. */
 @Composable
-fun SmartPasteAction(onAccept: (SmartPasteSuggestion) -> Unit, modifier: Modifier = Modifier) {
+fun SmartPasteAction(onAccept: (SmartPasteSuggestion) -> Unit, language: String = "ar", modifier: Modifier = Modifier) {
     val clipboard = LocalClipboardManager.current
     var pending by remember { mutableStateOf<SmartPasteSuggestion?>(null) }
     AssistChip(
         onClick = { pending = clipboard.getText()?.text?.let(SmartPasteParser::parse) },
         modifier = modifier.semantics { contentDescription = "Paste bank message and review transaction" },
-        label = { Text("Paste transaction") }
+        label = { Text(if (language == "ar") "لصق معاملة" else "Paste transaction") }
     )
     pending?.let { suggestion ->
         AlertDialog(
             onDismissRequest = { pending = null },
-            title = { Text("Review pasted transaction") },
+            title = { Text(if (language == "ar") "مراجعة المعاملة الملصقة" else "Review pasted transaction") },
             text = { Text(suggestion.amountText + " · " + (suggestion.merchantText ?: suggestion.parsedEntry.category?.categoryNameArabic ?: "Uncategorized")) },
-            confirmButton = { TextButton(onClick = { onAccept(suggestion); pending = null }) { Text("Review and continue") } },
-            dismissButton = { TextButton(onClick = { pending = null }) { Text("Cancel") } }
+            confirmButton = { TextButton(onClick = { onAccept(suggestion); pending = null }) { Text(if (language == "ar") "مراجعة ومتابعة" else "Review and continue") } },
+            dismissButton = { TextButton(onClick = { pending = null }) { Text(if (language == "ar") "إلغاء" else "Cancel") } }
         )
     }
 }
 
 @Composable
-fun LocalVoiceInputButton(onRecognized: (String) -> Unit, onError: (Int) -> Unit = {}, modifier: Modifier = Modifier) {
+fun LocalVoiceInputButton(onRecognized: (String) -> Unit, onError: (Int) -> Unit = {}, locale: String = "ar-EG", modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val currentOnRecognized by rememberUpdatedState(onRecognized)
     val currentOnError by rememberUpdatedState(onError)
@@ -97,7 +97,7 @@ fun LocalVoiceInputButton(onRecognized: (String) -> Unit, onError: (Int) -> Unit
         if (granted) {
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar-EG")
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale)
                 putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
             }
@@ -110,7 +110,7 @@ fun LocalVoiceInputButton(onRecognized: (String) -> Unit, onError: (Int) -> Unit
             else permission.launch(Manifest.permission.RECORD_AUDIO)
         },
         modifier = modifier.semantics { contentDescription = "Start voice transaction entry" },
-        label = { Text("🎙 Voice") }
+        label = { Text(if (locale.startsWith("ar")) "🎙 صوت" else "🎙 Voice") }
     )
 }
 
