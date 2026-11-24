@@ -2,11 +2,6 @@ name: ROFOF Signed Release APK
 
 on:
   workflow_dispatch:
-    inputs:
-      version_label:
-        description: Optional label for this release artifact
-        required: false
-        default: "release"
 
 permissions:
   contents: read
@@ -98,7 +93,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-output
-          cp app/build/outputs/apk/release/app-release.apk "release-output/ROFOF-${{ inputs.version_label }}-release.apk"
+          cp app/build/outputs/apk/release/app-release.apk "release-output/ROFOF-release.apk"
           cp "$RUNNER_TEMP/rofof-release-sha256.txt" release-output/SHA256SUMS.txt
           {
             echo "Artifact: ROFOF signed Release APK"
@@ -112,7 +107,7 @@ jobs:
       - name: Upload signed Release APK and verification evidence
         uses: actions/upload-artifact@v4
         with:
-          name: ROFOF-Signed-Release-${{ inputs.version_label }}
+          name: ROFOF-Signed-Release
           path: release-output/*
           if-no-files-found: error
           retention-days: 30
