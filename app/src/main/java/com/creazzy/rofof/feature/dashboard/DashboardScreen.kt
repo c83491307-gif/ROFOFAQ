@@ -21,6 +21,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -70,6 +71,8 @@ fun DashboardScreen(
     onQuickAddConsumed: () -> Unit = {}
 ) {
     val transactions by expenseViewModel.transactions.collectAsState()
+    val transactionsLoaded by expenseViewModel.transactionsLoaded.collectAsState()
+    val transactionsLoadError by expenseViewModel.transactionsLoadError.collectAsState()
     val categories by expenseViewModel.categories.collectAsState()
     val learnedKeywordSuggestions by expenseViewModel.learnedKeywordSuggestions.collectAsState()
     val accounts by expenseViewModel.accounts.collectAsState()
@@ -244,7 +247,38 @@ fun DashboardScreen(
                 }
 
                 Spacer(Modifier.height(12.dp))
-                if (transactions.isEmpty()) {
+                if (!transactionsLoaded) {
+                    Column(
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        repeat(3) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().height(76.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                shape = RoundedCornerShape(18.dp)
+                            ) { Box(Modifier.fillMaxSize()) }
+                        }
+                    }
+                } else if (transactionsLoadError != null) {
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(
+                                if (isArabic) "تعذر تحميل العمليات المالية." else "Could not load transactions.",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                transactionsLoadError.orEmpty(),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Button(onClick = expenseViewModel::retryTransactions) {
+                                Text(if (isArabic) "إعادة المحاولة" else "Retry")
+                            }
+                        }
+                    }
+                } else if (transactions.isEmpty()) {
                     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Box(
