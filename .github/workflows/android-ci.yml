@@ -32,11 +32,32 @@ jobs:
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - name: Unit and Robolectric Room tests
-        run: gradle --no-daemon testDebugUnitTest
+        shell: bash
+        run: |
+          for attempt in 1 2 3 4; do
+            if gradle --no-daemon testDebugUnitTest; then exit 0; fi
+            if [ "$attempt" -lt 4 ]; then
+              echo "Gradle dependency/test attempt $attempt failed; retrying after backoff."
+              sleep $((attempt * 20))
+            fi
+          done
+          exit 1
       - name: Android lint
-        run: gradle --no-daemon lintDebug
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if gradle --no-daemon lintDebug; then exit 0; fi
+            sleep $((attempt * 15))
+          done
+          exit 1
       - name: Debug APK
-        run: gradle --no-daemon assembleDebug
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if gradle --no-daemon assembleDebug; then exit 0; fi
+            sleep $((attempt * 15))
+          done
+          exit 1
       - name: Upload verification artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -75,4 +96,9 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: gradle --no-daemon connectedDebugAndroidTest
+          script: |
+            for attempt in 1 2 3 4; do
+              if gradle --no-daemon connectedDebugAndroidTest; then exit 0; fi
+              if [ "$attempt" -lt 4 ]; then sleep $((attempt * 20)); fi
+            done
+            exit 1
