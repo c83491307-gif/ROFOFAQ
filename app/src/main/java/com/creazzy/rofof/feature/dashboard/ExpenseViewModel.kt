@@ -251,7 +251,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
             val learningKey = cleanTitle
                 .replace(Regex("""[٠-٩۰-۹0-9]+([٫.,][٠-٩۰-۹0-9]+)?"""), " ")
-                .replace(Regex("""\\s+"""), " ")
+                .replace(Regex("\\s+"), " ")
                 .trim()
                 .lowercase()
             if (learningKey.length >= 2) {
