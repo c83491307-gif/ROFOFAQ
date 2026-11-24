@@ -154,6 +154,27 @@ interface TransactionDao {
         toEpochMillis: Long
     ): Flow<Long>
 
+    /** Daily average by weekday, normalized by the number of observed dates for that weekday. */
+    @Query("""
+        SELECT
+            CAST(strftime('%w', occurredAtEpochMillis / 1000, 'unixepoch', 'localtime') AS INTEGER) AS dayOfWeek,
+            COALESCE(SUM(amountMinor), 0) AS totalExpenseMinor,
+            COUNT(DISTINCT date(occurredAtEpochMillis / 1000, 'unixepoch', 'localtime')) AS occurrenceDays
+        FROM transactions
+        WHERE isDeleted = 0 AND transactionType = 'EXPENSE'
+          AND currencyCode = :currencyCode AND currencyExponent = :currencyExponent
+          AND occurredAtEpochMillis >= :fromEpochMillis
+          AND occurredAtEpochMillis < :toEpochMillis
+        GROUP BY dayOfWeek
+        ORDER BY dayOfWeek
+    """)
+    fun observeMonthlyExpenseByWeekday(
+        currencyCode: String,
+        currencyExponent: Int,
+        fromEpochMillis: Long,
+        toEpochMillis: Long
+    ): Flow<List<WeekdayExpense>>
+
     /** Monthly local-time behavior aggregates for the offline insights engine (Friday/Saturday weekend). */
     @Query("""
         SELECT
