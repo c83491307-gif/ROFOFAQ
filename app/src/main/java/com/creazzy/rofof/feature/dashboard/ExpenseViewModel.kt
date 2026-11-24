@@ -83,6 +83,9 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    val trash = repository.observeTrash()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     val transactions = repository.observeRecent()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -213,6 +216,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             runCatching { DatabaseSeeder(database).seedFromAssets(getApplication()) }
             repository.ensureDefaults()
+            repository.purgeExpiredTrash()
         }
     }
 
@@ -227,6 +231,14 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 )
             )
         }
+    }
+
+    fun restoreTransaction(id: String) {
+        viewModelScope.launch { runCatching { repository.restoreFromTrash(id) } }
+    }
+
+    fun permanentlyDeleteTransaction(id: String) {
+        viewModelScope.launch { runCatching { repository.permanentlyDeleteFromTrash(id) } }
     }
 
     fun addTransaction(title: String, amount: String, category: String, type: String, accountId: String = RoomTransactionRepository.DEFAULT_ACCOUNT_ID, occurredAtEpochMillis: Long = System.currentTimeMillis()) {
