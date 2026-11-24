@@ -52,7 +52,7 @@ class SmartEntryParser(
 
     private fun normalize(value: String): String {
         val decomposed = Normalizer.normalize(value, Normalizer.Form.NFD)
-            .replace(Regex("\\p{Mn}+"), "")
+            .replace(Regex("\p{Mn}+"), "")
         return decomposed
             .replace('أ', 'ا').replace('إ', 'ا').replace('آ', 'ا')
             .replace('ى', 'ي').replace('ة', 'ه')
@@ -74,7 +74,7 @@ class SmartEntryParser(
     }
 
     companion object {
-        private val AMOUNT = Regex("""(?<![\\p{L}\\d])([0-9]+(?:[.,][0-9]{1,4})?)(?![\\p{L}\\d])""")
+        private val AMOUNT = Regex("""(?<![\p{L}\d])([0-9]+(?:[.,][0-9]{1,4})?)(?![\p{L}\d])""")
 
         private val INCOME_CUES = listOf("استلمت", "قبضت", "دخل لي", "وصلني", "تحويل وارد")
         private val EXPENSE_CUES = listOf("دفعت", "اشتريت", "صرف", "مصروف", "دفعت")
