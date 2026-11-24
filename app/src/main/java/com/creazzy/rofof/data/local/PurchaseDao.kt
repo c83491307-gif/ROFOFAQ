@@ -60,6 +60,9 @@ interface PurchaseDao {
     @Query("SELECT COUNT(*) FROM purchase_allocation_debt_links links INNER JOIN purchase_allocations a ON a.id = links.allocationId INNER JOIN purchase_items i ON i.id = a.itemId WHERE i.sessionId = :sessionId")
     suspend fun debtLinkCountForSession(sessionId: String): Int
 
+    @Query("SELECT COUNT(*) FROM purchase_allocation_debt_links links INNER JOIN purchase_allocations a ON a.id = links.allocationId INNER JOIN purchase_items i ON i.id = a.itemId WHERE i.sessionId = :sessionId AND a.participantId = :participantId")
+    suspend fun debtLinkCountForParticipant(sessionId: String, participantId: String): Int
+
     @Query("SELECT * FROM purchase_sessions ORDER BY createdAtEpochMillis DESC")
     fun observeSessions(): Flow<List<PurchaseSessionEntity>>
 
@@ -108,11 +111,6 @@ interface PurchaseDao {
             WHERE i.sessionId = :sessionId AND a.participantId = p.id), 0) AS allocatedMinor,
           COALESCE((SELECT SUM(pay.amountMinor) FROM purchase_payments pay
             WHERE pay.sessionId = :sessionId AND pay.participantId = p.id), 0) AS paidMinor,
-          COALESCE((SELECT SUM(d.principalMinor) FROM debts d WHERE d.id IN (
-            SELECT DISTINCT links.debtId FROM purchase_allocation_debt_links links
-            INNER JOIN purchase_allocations a ON a.id = links.allocationId
-            INNER JOIN purchase_items i ON i.id = a.itemId
-            WHERE i.sessionId = :sessionId AND a.participantId = p.id)), 0) AS debtMinor,
           COALESCE((SELECT SUM(d.principalMinor) FROM debts d WHERE d.id IN (
             SELECT DISTINCT links.debtId FROM purchase_allocation_debt_links links
             INNER JOIN purchase_allocations a ON a.id = links.allocationId
