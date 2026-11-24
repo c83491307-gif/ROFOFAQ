@@ -67,6 +67,7 @@ gradle connectedDebugAndroidTest
 - [x] Shared purchase sessions, participants, item-level exact allocations, actual payments, settlement balances and explicit personal-expense source links (see Phase 4 verification report).
 - [x] Monthly category budgets, manually maintained savings goals, and local budget-overrun notifications (Phases 5 and 10; see `docs/implementation/PHASE_10_BUDGET_OVERRUN_ALERTS.md`).
 - [x] Monthly recurring expense rules and reviewable draft generation (Phase 6; drafts are not auto-posted).
+- [x] Explicit atomic approval/skip of recurring drafts into the ledger (Phase 9).
 - [ ] Reports, cash-flow and forecasts.
 - [ ] Search, CSV import/export, validated backup/restore and app security.
 - [ ] Optional OCR and future web/sync extensions.
