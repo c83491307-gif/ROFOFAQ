@@ -124,6 +124,9 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         transactionRefresh.value = transactionRefresh.value + 1
     }
 
+    val frequentCategories = database.transactionDao().observeTopExpenseCategories()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     val categories = database.categoryDao().observeActive()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -321,7 +324,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         category: String,
         type: String,
         accountId: String = RoomTransactionRepository.DEFAULT_ACCOUNT_ID,
-        occurredAtEpochMillis: Long = System.currentTimeMillis()
+        occurredAtEpochMillis: Long = System.currentTimeMillis(),
+        onSaved: () -> Unit = {}
     ) {
         val cleanTitle = title.trim()
         if (cleanTitle.isEmpty() || (type != "INCOME" && type != "EXPENSE")) {
@@ -386,6 +390,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 }
                 ExpenseWidgetUpdater.refresh(getApplication())
                 _financeActionMessage.value = if (language.value == "ar") "تم حفظ العملية بنجاح." else "Transaction saved."
+                onSaved()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Throwable) {
