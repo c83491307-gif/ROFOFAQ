@@ -1,6 +1,7 @@
 package com.creazzy.rofof.feature.awareness
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -53,7 +54,7 @@ class NotificationHelper(context: Context) {
             .build()
 
         runCatching {
-            manager.notify(stateKey, stateKey.hashCode(), notification)
+            postNotification(stateKey, stateKey.hashCode(), notification)
             preferences.edit().putInt(stateKey, band).apply()
         }
     }
@@ -68,6 +69,15 @@ class NotificationHelper(context: Context) {
             PackageManager.PERMISSION_GRANTED
         ) return false
         return manager.areNotificationsEnabled()
+    }
+
+    /**
+     * The caller must pass the canNotify() guard before reaching this method.
+     * Keep the lint suppression local to the guarded platform call.
+     */
+    @SuppressLint("MissingPermission")
+    private fun postNotification(tag: String, id: Int, notification: android.app.Notification) {
+        manager.notify(tag, id, notification)
     }
 
     private fun ensureChannel() {
