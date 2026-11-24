@@ -29,6 +29,8 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -83,6 +85,13 @@ fun DashboardScreen(
     val insights by expenseViewModel.insights.collectAsState()
     val language by expenseViewModel.language.collectAsState()
     val financeActionMessage by expenseViewModel.financeActionMessage.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(financeActionMessage) {
+        financeActionMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            expenseViewModel.clearFinanceActionMessage()
+        }
+    }
     val isSavingTransaction by expenseViewModel.isSavingTransaction.collectAsState()
     val awarenessReview by expenseViewModel.awarenessReview.collectAsState()
     val isArabic = language == "ar"
@@ -111,6 +120,7 @@ fun DashboardScreen(
 
     androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides direction) {
         Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
                 Spacer(Modifier.height(18.dp))
                 Row(
@@ -310,6 +320,11 @@ fun DashboardScreen(
                     }
                 }
             }
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
+            )
+            }
         }
     }
 
@@ -399,19 +414,6 @@ fun DashboardScreen(
         )
     }
 
-    financeActionMessage?.let { message ->
-        AlertDialog(
-            onDismissRequest = expenseViewModel::clearFinanceActionMessage,
-            title = { Text(if (isArabic) "إدارة الحسابات والفئات" else "Account & category management") },
-            text = { Text(message) },
-            confirmButton = {
-                TextButton(onClick = expenseViewModel::clearFinanceActionMessage) {
-                    Text(if (isArabic) "حسناً" else "OK")
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    }
 }
 
 @Composable
