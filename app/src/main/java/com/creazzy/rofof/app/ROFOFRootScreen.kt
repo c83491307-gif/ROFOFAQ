@@ -51,6 +51,7 @@ import androidx.navigation.compose.rememberNavController
 import com.creazzy.rofof.feature.budgetgoals.BudgetGoalsScreen
 import com.creazzy.rofof.feature.dashboard.DashboardScreen
 import com.creazzy.rofof.feature.dashboard.ExpenseViewModel
+import com.creazzy.rofof.feature.analytics.AnalyticsScreen
 import com.creazzy.rofof.feature.debts.DebtManagementScreen
 import com.creazzy.rofof.feature.purchases.PurchaseManagementScreen
 import com.creazzy.rofof.feature.recurring.RecurringManagementScreen
@@ -195,6 +196,7 @@ fun ROFOFRootScreen(
                     onExportCsv = requestCsvExport,
                     onTrash = { navController.navigate("trash") },
                     onDebts = { navController.navigate("debts") },
+                    onAnalytics = { navController.navigate("analytics") },
                     appLockEnabled = appLockEnabled,
                     onAppLockChange = onAppLockChange
                 )
@@ -210,6 +212,9 @@ fun ROFOFRootScreen(
             }
             composable("debts") {
                 DebtManagementScreen(onBack = { navController.popBackStack() })
+            }
+            composable("analytics") {
+                AnalyticsScreen(onBack = { navController.popBackStack() }, language = language)
             }
         }
     }
@@ -274,6 +279,7 @@ private fun SettingsRoute(
     onExportCsv: () -> Unit,
     onTrash: () -> Unit,
     onDebts: () -> Unit,
+    onAnalytics: () -> Unit,
     appLockEnabled: Boolean,
     onAppLockChange: (Boolean) -> Unit
 ) {
@@ -298,6 +304,9 @@ private fun SettingsRoute(
         }
         TextButton(onClick = onDebts) {
             Text(if (ar) "الديون والسلف" else "Debts and loans")
+        }
+        TextButton(onClick = onAnalytics) {
+            Text(if (ar) "التقارير والبحث" else "Reports and search")
         }
         androidx.compose.foundation.layout.Row(
             modifier = Modifier.fillMaxWidth(),
