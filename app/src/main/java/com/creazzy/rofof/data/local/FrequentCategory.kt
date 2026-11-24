@@ -4,5 +4,5 @@ package com.creazzy.rofof.data.local
 data class FrequentCategory(
     val categoryId: String,
     val categoryName: String,
-    val transactionCount: Int
+    val transactionCount: Long
 )
