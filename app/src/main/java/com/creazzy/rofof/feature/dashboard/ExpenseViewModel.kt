@@ -190,6 +190,17 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         SafeToSpendState(0L, 0L, daysRemainingInMonth, 0L, false)
     )
 
+    fun suggestRecentAmount(categoryName: String, transactionType: String, accountId: String, onResult: (Long?) -> Unit) {
+        viewModelScope.launch {
+            val result = runCatching {
+                val account = database.accountDao().findById(accountId) ?: return@runCatching null
+                val category = database.categoryDao().findByNameAndType(categoryName, transactionType) ?: return@runCatching null
+                database.transactionDao().averageRecentExpenseMinor(category.id, account.currencyCode, account.currencyExponent)
+            }.getOrNull()
+            onResult(result)
+        }
+    }
+
     fun createAccount(name: String, currencyCode: String, exponent: Int, openingBalance: String) {
         val minor = runCatching {
             BigDecimal(openingBalance.trim().replace(',', '.'))
