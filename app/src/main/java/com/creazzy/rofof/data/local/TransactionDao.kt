@@ -97,6 +97,20 @@ interface TransactionDao {
     @Query("SELECT COUNT(*) FROM transactions WHERE categoryId = :categoryId")
     suspend fun countForCategory(categoryId: String): Int
 
+    @Query("""
+        SELECT COALESCE(SUM(amountMinor), 0) FROM transactions
+        WHERE transactionType = 'EXPENSE'
+          AND currencyCode = :currencyCode AND currencyExponent = :currencyExponent
+          AND occurredAtEpochMillis >= :fromEpochMillis
+          AND occurredAtEpochMillis < :toEpochMillis
+    """)
+    fun observeMonthlyExpenseTotal(
+        currencyCode: String,
+        currencyExponent: Int,
+        fromEpochMillis: Long,
+        toEpochMillis: Long
+    ): Flow<Long>
+
     /** Lifetime expense totals, kept separate by currency and exponent. */
     @Query("""
         SELECT categoryId, currencyCode, currencyExponent,
