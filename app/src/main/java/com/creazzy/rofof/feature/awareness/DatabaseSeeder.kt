@@ -1,5 +1,6 @@
 package com.creazzy.rofof.feature.awareness
 
+import android.content.Context
 import androidx.room.withTransaction
 import com.creazzy.rofof.data.local.CategoryEntity
 import com.creazzy.rofof.data.local.RofofDatabase
@@ -16,6 +17,11 @@ data class DatabaseSeedResult(
 class DatabaseSeeder(
     private val database: RofofDatabase
 ) {
+    suspend fun seedFromAssets(context: Context, nowEpochMillis: Long = System.currentTimeMillis()): DatabaseSeedResult {
+        val categories = RuleLoader().load(context).categories
+        return seed(categories, nowEpochMillis)
+    }
+
     suspend fun seed(categories: List<SeedCategory>, nowEpochMillis: Long): DatabaseSeedResult {
         require(categories.map { it.id }.distinct().size == categories.size) {
             "Seed category IDs must be unique."

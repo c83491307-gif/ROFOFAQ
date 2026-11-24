@@ -3,6 +3,7 @@ package com.creazzy.rofof.feature.awareness
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.creazzy.rofof.data.local.CategoryEntity
 import com.creazzy.rofof.data.local.RofofDatabase
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -40,12 +41,11 @@ class DatabaseSeederTest {
         assertEquals(DatabaseSeeder.DEFAULT_CATEGORIES.size, second.alreadyPresent)
         assertNotNull(database.categoryDao().findById("awareness-expense-food"))
         assertEquals(null, database.accountDao().findById("awareness-default-account"))
-        assertEquals(0, database.transactionDao().observeRecent().let { 0 })
     }
 
     @Test fun existingMatchingCategoryIsPreservedInsteadOfOverwritten() = runBlocking {
         database.categoryDao().insert(
-            com.creazzy.rofof.data.local.CategoryEntity(
+            CategoryEntity(
                 id = "user-food", name = "Food", transactionType = "EXPENSE",
                 parentId = null, isArchived = true, createdAtEpochMillis = 7L
             )
