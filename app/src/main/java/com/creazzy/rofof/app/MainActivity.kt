@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
 import android.os.Bundle
 import androidx.activity.compose.setContent
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -45,6 +47,7 @@ class MainActivity : FragmentActivity() {
     private var openDashboardRequested by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         appLockEnabled = getSharedPreferences(SECURITY_PREFS, MODE_PRIVATE).getBoolean(APP_LOCK_KEY, false)
         appUnlocked = !appLockEnabled
@@ -52,14 +55,17 @@ class MainActivity : FragmentActivity() {
         openDashboardRequested = intent?.action == ACTION_OPEN_DASHBOARD
         scheduleBudgetNotifications()
         ExpenseWidgetUpdater.refresh(applicationContext)
-        window.statusBarColor = android.graphics.Color.rgb(244, 247, 245)
-        window.navigationBarColor = android.graphics.Color.rgb(244, 247, 245)
-        window.decorView.systemUiVisibility =
-            android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or
-                android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-
         setContent {
             val systemDark = isSystemInDarkTheme()
+            SideEffect {
+                val barColor = if (systemDark) android.graphics.Color.rgb(16, 24, 22)
+                    else android.graphics.Color.rgb(244, 247, 245)
+                window.statusBarColor = barColor
+                window.navigationBarColor = barColor
+                window.decorView.systemUiVisibility = if (systemDark) 0 else
+                    android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or
+                        android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            }
             MaterialTheme(
                 colorScheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     if (systemDark) dynamicDarkColorScheme(this@MainActivity) else dynamicLightColorScheme(this@MainActivity)
