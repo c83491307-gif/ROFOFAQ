@@ -115,6 +115,41 @@ interface TransactionDao {
         toEpochMillis: Long
     ): Flow<Long>
 
+    /** Monthly local-time behavior aggregates for the offline insights engine (Friday/Saturday weekend). */
+    @Query("""
+        SELECT
+            COALESCE(SUM(CASE
+                WHEN strftime('%w', occurredAtEpochMillis / 1000, 'unixepoch', 'localtime') IN ('5', '6')
+                THEN amountMinor ELSE 0 END), 0) AS weekendExpenseMinor,
+            COUNT(DISTINCT CASE
+                WHEN strftime('%w', occurredAtEpochMillis / 1000, 'unixepoch', 'localtime') IN ('5', '6')
+                THEN date(occurredAtEpochMillis / 1000, 'unixepoch', 'localtime') END) AS weekendDays,
+            COALESCE(SUM(CASE
+                WHEN strftime('%w', occurredAtEpochMillis / 1000, 'unixepoch', 'localtime') NOT IN ('5', '6')
+                THEN amountMinor ELSE 0 END), 0) AS weekdayExpenseMinor,
+            COUNT(DISTINCT CASE
+                WHEN strftime('%w', occurredAtEpochMillis / 1000, 'unixepoch', 'localtime') NOT IN ('5', '6')
+                THEN date(occurredAtEpochMillis / 1000, 'unixepoch', 'localtime') END) AS weekdayDays,
+            COALESCE(SUM(amountMinor), 0) AS totalExpenseMinor,
+            COALESCE(SUM(CASE
+                WHEN lower(categories.name) LIKE '%coffee%' OR lower(categories.name) LIKE '%قهوة%'
+                THEN transactions.amountMinor ELSE 0 END), 0) AS coffeeExpenseMinor,
+            COALESCE(MAX(transactions.occurredAtEpochMillis), 0) AS lastExpenseAtEpochMillis
+        FROM transactions
+        LEFT JOIN categories ON categories.id = transactions.categoryId
+        WHERE transactions.transactionType = 'EXPENSE'
+          AND transactions.currencyCode = :currencyCode
+          AND transactions.currencyExponent = :currencyExponent
+          AND transactions.occurredAtEpochMillis >= :fromEpochMillis
+          AND transactions.occurredAtEpochMillis < :toEpochMillis
+    """)
+    fun observeMonthlyInsightsSnapshot(
+        currencyCode: String,
+        currencyExponent: Int,
+        fromEpochMillis: Long,
+        toEpochMillis: Long
+    ): Flow<FinancialInsightsSnapshot>
+
     /** Lifetime expense totals, kept separate by currency and exponent. */
     @Query("""
         SELECT categoryId, currencyCode, currencyExponent,
