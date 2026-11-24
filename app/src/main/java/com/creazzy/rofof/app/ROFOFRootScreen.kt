@@ -1,7 +1,6 @@
 package com.creazzy.rofof.app
 
 import android.app.Activity
-import androidx.activity.ExperimentalActivityApi
 import androidx.activity.compose.PredictiveBackHandler
 import kotlinx.coroutines.CancellationException
 import androidx.compose.animation.fadeIn
@@ -74,7 +73,6 @@ private val rootDestinations = listOf(
     RootDestination("settings", "الإعدادات", "Settings", "⚙")
 )
 
-@OptIn(ExperimentalActivityApi::class)
 @Composable
 fun ROFOFRootScreen(
     openQuickAdd: Boolean = false,
