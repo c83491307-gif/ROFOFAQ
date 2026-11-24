@@ -515,6 +515,7 @@ private fun AddTransactionDialog(
     }
     var category by rememberSaveable(initialTransaction?.id) { mutableStateOf(initialCategoryName) }
     var smartCommand by rememberSaveable(initialTransaction?.id) { mutableStateOf("") }
+    var voiceError by remember { mutableStateOf<Int?>(null) }
     var suggestedAmountMinor by remember { mutableStateOf<Long?>(null) }
     var smartSuggestion by rememberSaveable(initialTransaction?.id) { mutableStateOf<String?>(null) }
     var appliedReviewText by rememberSaveable(initialTransaction?.id) { mutableStateOf<String?>(null) }
@@ -557,7 +558,8 @@ private fun AddTransactionDialog(
                 }
                 if (initialTransaction == null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        LocalVoiceInputButton(locale = if (language == "ar") "ar-EG" else "en-US", onRecognized = { spoken ->
+                        LocalVoiceInputButton(locale = if (language == "ar") "ar-EG" else "en-US", onError = { voiceError = it }, onRecognized = { spoken ->
+                            voiceError = null
                             smartCommand = spoken
                             title = spoken
                             val parsed = smartParser.parse(spoken)
@@ -577,6 +579,13 @@ private fun AddTransactionDialog(
                             }
                             appliedReviewText = null
                         })
+                    }
+                    voiceError?.let {
+                        Text(
+                            if (language == "ar") "تعذر تشغيل التعرف الصوتي. تحقق من إذن الميكروفون وخدمة التعرف وحزمة اللغة." else "Voice recognition unavailable. Check microphone permission, recognition service and language pack.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                     FrequentCategoryChips(categories = frequentCategories, onSelect = { selectedId ->
                         frequentCategories.firstOrNull { it.categoryId == selectedId }?.let { category = it.categoryName }
