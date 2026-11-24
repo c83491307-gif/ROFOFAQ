@@ -370,6 +370,9 @@ abstract class RofofDatabase : RoomDatabase() {
                 database.execSQL(
                     "ALTER TABLE recurring_rules ADD COLUMN dayOfMonth INTEGER NOT NULL DEFAULT 1"
                 )
+                database.execSQL(
+                    "UPDATE recurring_rules SET dayOfMonth = CAST(strftime('%d', nextRunEpochMillis / 1000, 'unixepoch', 'localtime') AS INTEGER)"
+                )
             }
         }
 
