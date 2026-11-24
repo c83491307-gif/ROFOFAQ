@@ -226,12 +226,12 @@ private fun TransactionsRoute(viewModel: ExpenseViewModel) {
         Text(
             if (ar) "كل المعاملات" else "All transactions",
             style = MaterialTheme.typography.headlineSmall,
-            color = Color(0xFF172B2A)
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             if (ar) "${transactions.size} عملية محفوظة على هذا الجهاز" else "${transactions.size} transactions stored on this device",
             style = MaterialTheme.typography.bodySmall,
-            color = Color(0xFF71817D)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -244,16 +244,16 @@ private fun TransactionsRoute(viewModel: ExpenseViewModel) {
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(Modifier.fillMaxWidth().padding(14.dp)) {
-                        Text(item.title, color = Color(0xFF172B2A), style = MaterialTheme.typography.titleMedium)
+                        Text(item.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
                         Text(
                             moneyLabel(item.amountMinor, item.currencyCode, item.currencyExponent, ar),
-                            color = if (item.transactionType == "INCOME") Color(0xFF147D64) else Color(0xFFB45B52),
+                            color = if (item.transactionType == "INCOME") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
                             if (ar) if (item.transactionType == "INCOME") "دخل" else "مصروف"
                             else if (item.transactionType == "INCOME") "Income" else "Expense",
-                            color = Color(0xFF71817D),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall
                         )
                         TextButton(onClick = { viewModel.deleteTransaction(item.id) }) {
@@ -312,7 +312,7 @@ private fun SettingsRoute(
         Text(
             if (ar) "تُحفظ بياناتك محلياً على الجهاز. لا يحتاج التطبيق إلى اتصال بالإنترنت للوظائف المالية الأساسية."
             else "Your financial data stays on this device. Core finance features do not require an internet connection.",
-            color = Color(0xFF71817D)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         TextButton(onClick = onPurchases) { Text(if (ar) "المشتريات المشتركة" else "Shared purchases") }
         TextButton(onClick = onRecurring) { Text(if (ar) "العمليات المتكررة" else "Recurring transactions") }
