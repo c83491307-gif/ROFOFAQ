@@ -372,6 +372,7 @@ fun DashboardScreen(
             accounts = accounts,
             learnedKeywords = learnedKeywordSuggestions,
             frequentCategories = frequentCategories,
+            onSuggestAmount = expenseViewModel::suggestRecentAmount,
             onDismiss = { showAdd = false },
             onAnalyze = { command, accountId, occurredAt -> expenseViewModel.analyzeSmartEntry(command, accountId, occurredAt) },
             awarenessReview = awarenessReview,
@@ -497,6 +498,7 @@ private fun AddTransactionDialog(
     accounts: List<com.creazzy.rofof.data.local.AccountBalance>,
     learnedKeywords: Map<String, SmartEntryParser.CategorySuggestion> = emptyMap(),
     frequentCategories: List<com.creazzy.rofof.data.local.FrequentCategory> = emptyList(),
+    onSuggestAmount: (String, String, String, (Long?) -> Unit) -> Unit = { _, _, _, callback -> callback(null) },
     onDismiss: () -> Unit,
     onSave: (String, String, String, String, String, Long) -> Unit,
     onAnalyze: (String, String, Long) -> Unit = { _, _, _ -> },
@@ -512,6 +514,7 @@ private fun AddTransactionDialog(
     }
     var category by rememberSaveable(initialTransaction?.id) { mutableStateOf(initialCategoryName) }
     var smartCommand by rememberSaveable(initialTransaction?.id) { mutableStateOf("") }
+    var suggestedAmountMinor by remember { mutableStateOf<Long?>(null) }
     var smartSuggestion by rememberSaveable(initialTransaction?.id) { mutableStateOf<String?>(null) }
     var appliedReviewText by rememberSaveable(initialTransaction?.id) { mutableStateOf<String?>(null) }
     val smartParser = remember(learnedKeywords) { SmartEntryParser(learnedKeywords = learnedKeywords) }
@@ -522,6 +525,12 @@ private fun AddTransactionDialog(
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialTransaction?.occurredAtEpochMillis ?: System.currentTimeMillis())
     val selectedCurrencyExponent = accounts.firstOrNull { it.id == accountId }?.currencyExponent ?: 2
     val amountValid = AmountInputParser.toMinorUnits(amount, selectedCurrencyExponent) != null
+    LaunchedEffect(category, type, accountId) {
+        suggestedAmountMinor = null
+        if (category.isNotBlank() && accountId.isNotBlank() && type == "EXPENSE") {
+            onSuggestAmount(category, type, accountId) { suggestedAmountMinor = it }
+        }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (initialTransaction == null) words.newTransaction else words.edit, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
@@ -626,6 +635,12 @@ private fun AddTransactionDialog(
                     }
                 }
                 OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(words.transactionName) }, singleLine = true)
+                suggestedAmountMinor?.let { suggested ->
+                    AssistChip(
+                        onClick = { amount = BigDecimal.valueOf(suggested, selectedCurrencyExponent).toPlainString() },
+                        label = { Text((if (language == "ar") "المبلغ المعتاد: " else "Typical amount: ") + BigDecimal.valueOf(suggested, selectedCurrencyExponent).toPlainString()) }
+                    )
+                }
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { value ->
