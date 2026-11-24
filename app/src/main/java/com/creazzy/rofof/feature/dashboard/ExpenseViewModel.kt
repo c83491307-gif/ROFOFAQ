@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.creazzy.rofof.data.local.CategoryEntity
+import com.creazzy.rofof.data.local.LearnedKeyword
+import com.creazzy.rofof.feature.smartentry.SmartEntryParser
 import com.creazzy.rofof.data.repository.RoomFinanceRepository
 import com.creazzy.rofof.data.local.LocalPreferenceEntity
 import com.creazzy.rofof.data.local.RofofDatabase
@@ -85,6 +87,22 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     val categories = database.categoryDao().observeActive()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val learnedKeywordSuggestions = combine(
+        database.learnedKeywordDao().observeAll(),
+        database.categoryDao().observeActive()
+    ) { learned, activeCategories ->
+        val categoriesById = activeCategories.associateBy { it.id }
+        learned.mapNotNull { item ->
+            categoriesById[item.categoryId]?.let { category ->
+                item.keyword to SmartEntryParser.CategorySuggestion(
+                    categoryNameArabic = category.name,
+                    categoryNameEnglish = category.name,
+                    transactionType = category.transactionType
+                )
+            }
+        }.toMap()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val managedCategories = financeRepository.observeCategoriesForManagement()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -230,6 +248,15 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 }.let {
                     database.categoryDao().findByNameAndType(categoryName, type)?.id ?: it
                 }
+
+            val learningKey = cleanTitle
+                .replace(Regex("""[٠-٩۰-۹0-9]+([٫.,][٠-٩۰-۹0-9]+)?"""), " ")
+                .replace(Regex("""\\s+"""), " ")
+                .trim()
+                .lowercase()
+            if (learningKey.length >= 2) {
+                database.learnedKeywordDao().insert(LearnedKeyword(learningKey, categoryId))
+            }
 
             val now = System.currentTimeMillis()
             repository.add(
