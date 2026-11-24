@@ -10,6 +10,8 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -59,7 +61,9 @@ class MainActivity : FragmentActivity() {
         setContent {
             val systemDark = isSystemInDarkTheme()
             MaterialTheme(
-                colorScheme = if (systemDark) darkColorScheme(
+                colorScheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (systemDark) dynamicDarkColorScheme(this@MainActivity) else dynamicLightColorScheme(this@MainActivity)
+                } else if (systemDark) darkColorScheme(
                     primary = Color(0xFF79D6B5),
                     onPrimary = Color(0xFF00382B),
                     background = Color(0xFF101816),
