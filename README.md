@@ -67,8 +67,10 @@ gradle connectedDebugAndroidTest
 - [x] Shared purchase sessions, participants, item-level exact allocations, actual payments, settlement balances and explicit personal-expense source links (see Phase 4 verification report).
 - [x] Monthly category budgets, manually maintained savings goals, and local budget-overrun notifications (Phases 5 and 10; see `docs/implementation/PHASE_10_BUDGET_OVERRUN_ALERTS.md`).
 - [x] Monthly recurring expense rules and reviewable draft generation (Phase 6; drafts are not auto-posted).
-- [ ] Reports, cash-flow and forecasts.
-- [ ] Search, CSV import/export, validated backup/restore and app security.
+- [x] Monthly category reports and transaction search.
+- [ ] Cash-flow and forecast UI.
+- [x] Safe local CSV export with UTF-8 BOM and formula-prefix neutralization.
+- [ ] CSV import, validated backup/restore and app security.
 - [ ] Optional OCR and future web/sync extensions.
 
 The checked items above describe delivered source functionality, not a claim that the latest branch has passed CI. See the implementation reports for exact verification evidence, including [Priority 2 shared purchases](docs/implementation/PHASE_4_SHARED_PURCHASES.md).
@@ -86,3 +88,6 @@ See [new enhancements and V6.0 input implementation](docs/implementation/NEW_15_
 ## Build a debug APK with GitHub Actions
 
 The repository includes a cloud build workflow. Open **Actions → ROFOF Debug APK**, run it manually or push to `feat/rofof-apk-integration`, then download the `ROFOF-Debug-APK` artifact after a successful run. The build uses JDK 17, Android SDK 35 and Gradle 8.9 provided by GitHub Actions; it does not require Android Studio or a local Gradle installation. The broader Android CI workflow also runs unit/Robolectric tests, lint and emulator instrumentation. See [APK build and branch integration](docs/implementation/APK_BUILD_AND_BRANCH_INTEGRATION.md).
+
+
+Phase 7–9 implementation notes: [reports and search](docs/implementation/PHASE_7_REPORTS_AND_SEARCH.md), [CSV export](docs/implementation/PHASE_8_CSV_EXPORT.md), and [recurring draft approval](docs/implementation/PHASE_9_RECURRING_APPROVAL.md).
