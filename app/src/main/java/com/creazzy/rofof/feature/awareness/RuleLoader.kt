@@ -33,8 +33,13 @@ class RuleLoader {
             require(keywords.map { it.keyword }.distinct().size == keywords.size) {
                 "Duplicate keyword in keywords_ar.json."
             }
-            val categoryIds = categories.map { it.id }.toSet()
-            keywords.forEach { require(it.categoryId in categoryIds) { "Unknown category ID for keyword: ${it.keyword}" } }
+            keywords.forEach { keyword ->
+                val category = categories.firstOrNull { it.id == keyword.categoryId }
+                    ?: error("Unknown category ID for keyword: ${keyword.keyword}")
+                require(category.transactionType == keyword.transactionType) {
+                    "Keyword type does not match its category: ${keyword.keyword}"
+                }
+            }
             require(rules.map { it.id }.distinct().size == rules.size) { "Duplicate rule ID in rules.json." }
             return AwarenessConfiguration(categories, keywords, rules.sortedWith(compareByDescending<AwarenessRule> { it.priority }.thenBy { it.id }))
         } catch (error: JSONException) {
@@ -81,7 +86,7 @@ class RuleLoader {
                     AwarenessCondition(
                         fact = condition.getString("fact").trim().also { require(it.isNotEmpty()) },
                         operator = operator,
-                        value = condition.opt("value").takeUnless { it == JSONObject.NULL }
+                        value = parseJsonValue(condition.opt("value"))
                     )
                 }
             }
@@ -108,6 +113,13 @@ class RuleLoader {
                 actions = actions
             )
         }
+
+    private fun parseJsonValue(value: Any?): Any? = when (value) {
+        null, JSONObject.NULL -> null
+        is JSONArray -> (0 until value.length()).map { parseJsonValue(value.opt(it)) }
+        is JSONObject -> value.keys().asSequence().associateWith { key -> parseJsonValue(value.opt(key)) }
+        else -> value
+    }
 
     companion object {
         val SUPPORTED_OPERATORS = setOf("eq", "neq", "gt", "gte", "lt", "lte", "contains", "exists", "between")

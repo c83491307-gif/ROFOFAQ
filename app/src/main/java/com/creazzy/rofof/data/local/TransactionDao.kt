@@ -66,6 +66,31 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun delete(id: String)
 
+    @Query("""
+        SELECT COALESCE(SUM(amountMinor), 0) FROM transactions
+        WHERE transactionType = 'EXPENSE' AND categoryId = :categoryId
+          AND currencyCode = :currencyCode AND currencyExponent = :currencyExponent
+          AND occurredAtEpochMillis >= :fromEpochMillis AND occurredAtEpochMillis < :toEpochMillis
+    """)
+    suspend fun sumExpensesForCategoryBetween(categoryId: String, currencyCode: String, currencyExponent: Int, fromEpochMillis: Long, toEpochMillis: Long): Long
+
+    @Query("""
+        SELECT COUNT(*) FROM transactions
+        WHERE transactionType = 'EXPENSE' AND categoryId = :categoryId
+          AND currencyCode = :currencyCode AND currencyExponent = :currencyExponent
+          AND occurredAtEpochMillis >= :fromEpochMillis AND occurredAtEpochMillis < :toEpochMillis
+    """)
+    suspend fun countExpensesForCategoryBetween(categoryId: String, currencyCode: String, currencyExponent: Int, fromEpochMillis: Long, toEpochMillis: Long): Int
+
+    @Query("""
+        SELECT COUNT(*) FROM transactions
+        WHERE transactionType = 'EXPENSE' AND categoryId = :categoryId
+          AND currencyCode = :currencyCode AND currencyExponent = :currencyExponent
+          AND amountMinor = :amountMinor
+          AND occurredAtEpochMillis >= :fromEpochMillis AND occurredAtEpochMillis < :toEpochMillis
+    """)
+    suspend fun countMatchingExpenses(categoryId: String, currencyCode: String, currencyExponent: Int, amountMinor: Long, fromEpochMillis: Long, toEpochMillis: Long): Int
+
     @Query("SELECT COUNT(*) > 0 FROM transactions WHERE accountId = :accountId")
     suspend fun hasTransactionsForAccount(accountId: String): Boolean
 

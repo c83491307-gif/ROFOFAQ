@@ -36,7 +36,7 @@ class AwarenessAdvisor(context: Context, private val database: RofofDatabase) {
             .filter { it.transactionType == type && normalized.contains(normalize(it.keyword)) }
             .maxByOrNull { normalize(it.keyword).length }
         val seed = mapping?.let { map -> config.categories.firstOrNull { it.id == map.categoryId } }
-        val category = seed?.let { database.categoryDao().findById(it.id) }
+        val category = seed?.let { database.categoryDao().findById(it.id) ?: database.categoryDao().findByNameAndType(it.name, type) }
             ?.takeIf { !it.isArchived && it.transactionType == type }
         val amountMinor = parsed.amountText?.let {
             BigDecimal(it.replace(',', '.')).setScale(account.currencyExponent, RoundingMode.UNNECESSARY)
@@ -63,6 +63,34 @@ class AwarenessAdvisor(context: Context, private val database: RofofDatabase) {
                 facts["budgetPercent"] = BigDecimal.valueOf(budget.spentMinor).add(BigDecimal.valueOf(amountMinor))
                     .multiply(BigDecimal("100")).divide(BigDecimal.valueOf(budget.amountMinor), 2, RoundingMode.HALF_UP)
             }
+            val week = 7L * 24 * 60 * 60 * 1000
+            val currentStart = occurredAt - week
+            val previousStart = currentStart - week
+            val currentSpend = database.transactionDao().sumExpensesForCategoryBetween(
+                category.id, account.currencyCode, account.currencyExponent, currentStart, occurredAt
+            )
+            val previousSpend = database.transactionDao().sumExpensesForCategoryBetween(
+                category.id, account.currencyCode, account.currencyExponent, previousStart, currentStart
+            )
+            if (previousSpend > 0L) {
+                facts["weeklySpendRatio"] = BigDecimal.valueOf(Math.addExact(currentSpend, amountMinor))
+                    .divide(BigDecimal.valueOf(previousSpend), 4, RoundingMode.HALF_UP)
+            }
+            val historyStart = occurredAt - 90L * 24 * 60 * 60 * 1000
+            val historyCount = database.transactionDao().countExpensesForCategoryBetween(
+                category.id, account.currencyCode, account.currencyExponent, historyStart, occurredAt
+            )
+            if (historyCount > 0) {
+                val historySum = database.transactionDao().sumExpensesForCategoryBetween(
+                    category.id, account.currencyCode, account.currencyExponent, historyStart, occurredAt
+                )
+                val average = BigDecimal.valueOf(historySum).divide(BigDecimal.valueOf(historyCount.toLong()), 4, RoundingMode.HALF_UP)
+                if (average > BigDecimal.ZERO) facts["amountRatioToAverage"] =
+                    BigDecimal.valueOf(amountMinor).divide(average, 4, RoundingMode.HALF_UP)
+            }
+            facts["recurringSimilarityCount"] = database.transactionDao().countMatchingExpenses(
+                category.id, account.currencyCode, account.currencyExponent, amountMinor, historyStart, occurredAt
+            ) + 1
         }
         database.localPreferenceDao().observe("awareness.rent_due_epoch_millis").first()?.value?.toLongOrNull()?.let { due ->
             facts["daysUntilRent"] = Math.floorDiv(due - occurredAt, 24L * 60 * 60 * 1000)
@@ -70,7 +98,11 @@ class AwarenessAdvisor(context: Context, private val database: RofofDatabase) {
         val firstUse = database.localPreferenceDao().observe(FIRST_USE_KEY).first() == null
         facts["isFirstLaunch"] = firstUse
         val matches = RuleEngine().evaluate(config.rules, facts)
-        if (firstUse) database.localPreferenceDao().put(LocalPreferenceEntity(FIRST_USE_KEY, "seen", System.currentTimeMillis()))
+        val now = System.currentTimeMillis()
+        if (firstUse) database.localPreferenceDao().put(LocalPreferenceEntity(FIRST_USE_KEY, "seen", now))
+        database.localPreferenceDao().put(
+            LocalPreferenceEntity(LAST_MATCHES_KEY, matches.joinToString(",") { it.ruleId }, now)
+        )
 
         val arabicLabels = mapOf(
             "Food" to "طعام", "Coffee" to "قهوة", "Transport" to "مواصلات", "Fuel" to "وقود",
@@ -87,5 +119,8 @@ class AwarenessAdvisor(context: Context, private val database: RofofDatabase) {
         .replace(Regex("\\p{Mn}+"), "").replace('أ','ا').replace('إ','ا').replace('آ','ا')
         .replace('ى','ي').replace('ة','ه').replace('ـ',' ').lowercase()
 
-    companion object { const val FIRST_USE_KEY = "awareness.first_use" }
+    companion object {
+        const val FIRST_USE_KEY = "awareness.first_use"
+        const val LAST_MATCHES_KEY = "awareness.last_review_rule_matches"
+    }
 }
