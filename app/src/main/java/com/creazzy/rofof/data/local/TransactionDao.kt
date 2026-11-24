@@ -179,6 +179,20 @@ interface TransactionDao {
     """)
     fun observeExpenseSumsByCategory(): Flow<List<CategoryExpenseSum>>
 
+    @Query("""
+        SELECT transactions.occurredAtEpochMillis AS occurredAtEpochMillis,
+            COALESCE(categories.name, '') AS categoryName,
+            transactions.amountMinor AS amountMinor,
+            transactions.currencyCode AS currencyCode,
+            transactions.currencyExponent AS currencyExponent,
+            transactions.notes AS note
+        FROM transactions
+        LEFT JOIN categories ON categories.id = transactions.categoryId
+        WHERE transactions.isDeleted = 0
+        ORDER BY transactions.occurredAtEpochMillis DESC
+    """)
+    suspend fun getAllForCsvExport(): List<TransactionCsvRow>
+
     /**
      * Local transaction search. Amount matching supports both the stored minor-unit
      * integer and its decimal display representation; date upper bound is exclusive.
