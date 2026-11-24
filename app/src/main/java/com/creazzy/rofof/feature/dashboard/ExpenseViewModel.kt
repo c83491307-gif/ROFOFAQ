@@ -249,15 +249,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                     database.categoryDao().findByNameAndType(categoryName, type)?.id ?: it
                 }
 
-            val learningKey = cleanTitle
-                .replace(Regex("""[٠-٩۰-۹0-9]+([٫.,][٠-٩۰-۹0-9]+)?"""), " ")
-                .replace(Regex("\\s+"), " ")
-                .trim()
-                .lowercase()
-            if (learningKey.length >= 2) {
-                database.learnedKeywordDao().insert(LearnedKeyword(learningKey, categoryId))
-            }
-
             val now = System.currentTimeMillis()
             repository.add(
                 LedgerTransaction(
@@ -274,6 +265,15 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                     notes = null
                 )
             )
+            val learningKey = cleanTitle
+                .replace(Regex("""[٠-٩۰-۹0-9]+([٫.,][٠-٩۰-۹0-9]+)?"""), " ")
+                .replace(Regex("\\s+"), " ")
+                .trim()
+                .lowercase()
+            if (learningKey.length >= 2) {
+                database.learnedKeywordDao().insert(LearnedKeyword(learningKey, categoryId))
+            }
+
             if (type == "EXPENSE") {
                 budgetOverrunNotifier.refreshForExpense(
                     categoryId, account.currencyCode, account.currencyExponent,
