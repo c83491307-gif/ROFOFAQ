@@ -32,6 +32,33 @@ interface TransactionDao {
     """)
     fun observeMonthlyCashFlow(fromEpochMillis: Long, toEpochMillis: Long): Flow<List<MonthlyCashFlow>>
 
+    /** Average of the five most recent comparable expenses; currencies never mix. */
+    @Query("""
+        SELECT CAST(AVG(amountMinor) AS INTEGER) FROM (
+            SELECT amountMinor FROM transactions
+            WHERE isDeleted = 0 AND transactionType = 'EXPENSE'
+              AND categoryId = :categoryId
+              AND currencyCode = :currencyCode AND currencyExponent = :currencyExponent
+            ORDER BY occurredAtEpochMillis DESC, createdAtEpochMillis DESC
+            LIMIT 5
+        )
+    """)
+    suspend fun averageRecentExpenseMinor(categoryId: String, currencyCode: String, currencyExponent: Int): Long?
+
+    /** Frequently used categories are ranked by transaction count, capped at four. */
+    @Query("""
+        SELECT categories.id AS categoryId, categories.name AS categoryName,
+            COUNT(transactions.id) AS transactionCount
+        FROM transactions
+        INNER JOIN categories ON categories.id = transactions.categoryId
+        WHERE transactions.isDeleted = 0 AND transactions.transactionType = 'EXPENSE'
+          AND categories.isArchived = 0
+        GROUP BY categories.id, categories.name
+        ORDER BY transactionCount DESC, categories.name COLLATE NOCASE ASC
+        LIMIT 4
+    """)
+    fun observeTopExpenseCategories(): Flow<List<FrequentCategory>>
+
     @Query("SELECT * FROM transactions WHERE isDeleted = 0 ORDER BY occurredAtEpochMillis DESC LIMIT 250")
     fun observeRecent(): Flow<List<TransactionEntity>>
 
