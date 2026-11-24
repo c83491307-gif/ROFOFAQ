@@ -16,6 +16,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,6 +29,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.creazzy.rofof.data.local.RecurringDraftEntity
 import com.creazzy.rofof.data.local.RecurringRuleEntity
 import com.creazzy.rofof.data.local.RofofDatabase
+import com.creazzy.rofof.data.repository.RecurringDraftApprovalRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -42,8 +45,29 @@ import java.util.UUID
 class RecurringViewModel(application: Application) : AndroidViewModel(application) {
     private val db = RofofDatabase.getInstance(application)
     private val dao = db.recurringDao()
+    private val approvalRepository = RecurringDraftApprovalRepository(db)
+    val actionMessage = MutableStateFlow("")
     val rules = dao.observeRules().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val drafts = dao.observeDrafts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun approveDraft(draftId: String) {
+        viewModelScope.launch {
+            actionMessage.value = runCatching {
+                approvalRepository.approve(draftId, System.currentTimeMillis())
+                "تم اعتماد المسودة وتسجيل المعاملة · Draft approved and posted"
+            }.getOrElse { "تعذر الاعتماد: " + (it.message ?: "خطأ غير معروف") }
+        }
+    }
+
+    fun skipDraft(draftId: String) {
+        viewModelScope.launch {
+            actionMessage.value = if (approvalRepository.skip(draftId)) {
+                "تم تخطي المسودة · Draft skipped"
+            } else {
+                "المسودة لم تعد معلقة · Draft is no longer pending"
+            }
+        }
+    }
 
     fun addMonthlyExpense(title: String, amount: String, dayOfMonth: String) {
         val cleanTitle = title.trim()
@@ -123,6 +147,7 @@ fun RecurringManagementScreen(onBack: () -> Unit) {
     val vm: RecurringViewModel = viewModel()
     val rules by vm.rules.collectAsState()
     val drafts by vm.drafts.collectAsState()
+    val actionMessage by vm.actionMessage.collectAsState()
     var title by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var dayOfMonth by remember { mutableStateOf("1") }
@@ -138,9 +163,10 @@ fun RecurringManagementScreen(onBack: () -> Unit) {
             Text("إضافة قاعدة شهرية · Add monthly rule")
         }
         Text(
-            "تُسجّل العمليات المستحقة تلقائياً في الخلفية يومياً · Due transactions are posted automatically in the background",
+            "تُسجّل العمليات المستحقة تلقائياً في الخلفية يومياً · Due items are drafted for review before posting",
             modifier = Modifier.fillMaxWidth()
         )
+        if (actionMessage.isNotBlank()) Text(actionMessage)
         Text("القواعد · Rules (${rules.size})")
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(rules, key = { it.id }) { rule ->
@@ -159,6 +185,16 @@ fun RecurringManagementScreen(onBack: () -> Unit) {
                         Text(draft.title)
                         Text("EGP ${BigDecimal.valueOf(draft.amountMinor, draft.currencyExponent).toPlainString()}")
                         Text("Status: ${draft.status}")
+                        if (draft.status == "DRAFT") {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = { vm.approveDraft(draft.id) }) {
+                                    Text("اعتماد · Approve")
+                                }
+                                TextButton(onClick = { vm.skipDraft(draft.id) }) {
+                                    Text("تخطي · Skip")
+                                }
+                            }
+                        }
                     }
                 }
             }
