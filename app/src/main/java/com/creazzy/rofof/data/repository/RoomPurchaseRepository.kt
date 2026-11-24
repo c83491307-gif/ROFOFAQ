@@ -148,6 +148,9 @@ class RoomPurchaseRepository(private val database: RofofDatabase) {
         require(participant.sessionId == sessionId && !participant.isArchived) {
             "Participant does not belong to this active purchase"
         }
+        require(dao.debtLinkCountForParticipant(sessionId, participantId) == 0) {
+            "This participant's outstanding share is now tracked in the debt ledger"
+        }
         val id = UUID.randomUUID().toString()
         val now = System.currentTimeMillis()
         dao.insertPayment(PurchasePaymentEntity(id, sessionId, participantId, amountMinor,
@@ -167,7 +170,7 @@ class RoomPurchaseRepository(private val database: RofofDatabase) {
         }
         // Read a consistent snapshot before changing the session state.
         val rows = dao.settlementSnapshot(sessionId)
-        require(rows.all { it.allocatedMinor <= it.paidMinor }) {
+        require(rows.all { it.balanceMinor <= 0L }) {
             "All participant balances must be settled before closing"
         }
         dao.updateStatus(sessionId, SETTLED, System.currentTimeMillis())
