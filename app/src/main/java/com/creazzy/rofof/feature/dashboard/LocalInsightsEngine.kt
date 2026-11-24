@@ -1,6 +1,7 @@
 package com.creazzy.rofof.feature.dashboard
 
 import com.creazzy.rofof.data.local.FinancialInsightsSnapshot
+import java.math.BigInteger
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -20,9 +21,13 @@ object LocalInsightsEngine {
         if (snapshot.weekendDays > 0 && snapshot.weekdayDays > 0 &&
             snapshot.weekdayExpenseMinor > 0L
         ) {
-            val weekendPerDay = snapshot.weekendExpenseMinor.toDouble() / snapshot.weekendDays
-            val weekdayPerDay = snapshot.weekdayExpenseMinor.toDouble() / snapshot.weekdayDays
-            if (weekendPerDay > weekdayPerDay * 1.5) {
+            val weekendScaled = BigInteger.valueOf(snapshot.weekendExpenseMinor)
+                .multiply(BigInteger.valueOf(snapshot.weekdayDays.toLong()))
+                .multiply(BigInteger.valueOf(2L))
+            val weekdayThreshold = BigInteger.valueOf(snapshot.weekdayExpenseMinor)
+                .multiply(BigInteger.valueOf(snapshot.weekendDays.toLong()))
+                .multiply(BigInteger.valueOf(3L))
+            if (weekendScaled > weekdayThreshold) {
                 insights += if (arabic) {
                     "إنفاقك اليومي في عطلة نهاية الأسبوع أعلى بأكثر من 50%. جرّب تخصيص ميزانية للترفيه."
                 } else {
@@ -32,7 +37,8 @@ object LocalInsightsEngine {
         }
 
         if (snapshot.totalExpenseMinor > 0L &&
-            snapshot.coffeeExpenseMinor.toDouble() / snapshot.totalExpenseMinor.toDouble() > 0.15
+            BigInteger.valueOf(snapshot.coffeeExpenseMinor).multiply(BigInteger.valueOf(100L)) >
+                BigInteger.valueOf(snapshot.totalExpenseMinor).multiply(BigInteger.valueOf(15L))
         ) {
             insights += if (arabic) {
                 "القهوة تتجاوز 15% من مصروفاتك هذا الشهر. تحضيرها في المنزل قد يوفر لك."
