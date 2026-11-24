@@ -56,6 +56,10 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.creazzy.rofof.domain.model.LedgerTransaction
 import com.creazzy.rofof.feature.smartentry.SmartEntryParser
+import com.creazzy.rofof.feature.smartentry.FrequentCategoryChips
+import com.creazzy.rofof.feature.smartentry.LocalVoiceInputButton
+import com.creazzy.rofof.feature.smartentry.SmartPasteAction
+import com.creazzy.rofof.feature.smartentry.rememberSaveHaptic
 import com.creazzy.rofof.feature.awareness.AwarenessEntryReview
 import java.math.BigDecimal
 import java.text.NumberFormat
@@ -77,6 +81,8 @@ fun DashboardScreen(
     val categories by expenseViewModel.categories.collectAsState()
     val learnedKeywordSuggestions by expenseViewModel.learnedKeywordSuggestions.collectAsState()
     val accounts by expenseViewModel.accounts.collectAsState()
+    val frequentCategories by expenseViewModel.frequentCategories.collectAsState()
+    val hapticOnSaved = rememberSaveHaptic()
     val managedAccounts by expenseViewModel.managedAccounts.collectAsState()
     val managedCategories by expenseViewModel.managedCategories.collectAsState()
     val totals by expenseViewModel.totals.collectAsState()
@@ -365,13 +371,14 @@ fun DashboardScreen(
             language = language,
             accounts = accounts,
             learnedKeywords = learnedKeywordSuggestions,
+            frequentCategories = frequentCategories,
             onDismiss = { showAdd = false },
             onAnalyze = { command, accountId, occurredAt -> expenseViewModel.analyzeSmartEntry(command, accountId, occurredAt) },
             awarenessReview = awarenessReview,
             onClearReview = expenseViewModel::clearAwarenessReview,
             isSaving = isSavingTransaction,
             onSave = { title, amount, category, type, accountId, occurredAt ->
-                expenseViewModel.addTransaction(title, amount, category, type, accountId, occurredAt)
+                expenseViewModel.addTransaction(title, amount, category, type, accountId, occurredAt, onSaved = hapticOnSaved)
                 showAdd = false
             }
         )
@@ -489,6 +496,7 @@ private fun AddTransactionDialog(
     language: String,
     accounts: List<com.creazzy.rofof.data.local.AccountBalance>,
     learnedKeywords: Map<String, SmartEntryParser.CategorySuggestion> = emptyMap(),
+    frequentCategories: List<com.creazzy.rofof.data.local.FrequentCategory> = emptyList(),
     onDismiss: () -> Unit,
     onSave: (String, String, String, String, String, Long) -> Unit,
     onAnalyze: (String, String, Long) -> Unit = { _, _, _ -> },
@@ -538,6 +546,29 @@ private fun AddTransactionDialog(
                     ) { Text(words.income) }
                 }
                 if (initialTransaction == null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        LocalVoiceInputButton(onRecognized = { spoken ->
+                            smartCommand = spoken
+                            val parsed = smartParser.parse(spoken)
+                            parsed.amountText?.let { amount = it }
+                            parsed.category?.let { suggestion ->
+                                category = if (language == "ar") suggestion.categoryNameArabic else suggestion.categoryNameEnglish
+                                type = suggestion.transactionType
+                            }
+                        })
+                        SmartPasteAction(onAccept = { pasted ->
+                            smartCommand = pasted.sourcePreview
+                            pasted.amountText.let { amount = it }
+                            pasted.parsedEntry.category?.let { suggestion ->
+                                category = if (language == "ar") suggestion.categoryNameArabic else suggestion.categoryNameEnglish
+                                type = suggestion.transactionType
+                            }
+                            appliedReviewText = null
+                        })
+                    }
+                    FrequentCategoryChips(categories = frequentCategories, onSelect = { selectedId ->
+                        frequentCategories.firstOrNull { it.categoryId == selectedId }?.let { category = it.categoryName }
+                    }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(
                         value = smartCommand,
                         onValueChange = {
