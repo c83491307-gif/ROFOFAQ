@@ -37,6 +37,7 @@ class MainActivity : FragmentActivity() {
     private var appLockEnabled by mutableStateOf(false)
     private var appUnlocked by mutableStateOf(true)
     private var authenticationInProgress = false
+    private var promptAttempted = false
 
     private var quickAddRequested by mutableStateOf(false)
     private var openDashboardRequested by mutableStateOf(false)
@@ -74,7 +75,7 @@ class MainActivity : FragmentActivity() {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("ROFOF · التطبيق مقفل")
-                            Button(onClick = ::authenticateApp) { Text("التحقق بالبصمة أو قفل الجهاز") }
+                            Button(onClick = { promptAttempted = false; authenticateApp() }) { Text("التحقق بالبصمة أو قفل الجهاز") }
                         }
                     }
                 } else {
@@ -95,11 +96,11 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         ExpenseWidgetUpdater.refresh(applicationContext)
-        if (appLockEnabled && !appUnlocked && !authenticationInProgress) authenticateApp()
+        if (appLockEnabled && !appUnlocked && !authenticationInProgress && !promptAttempted) authenticateApp()
     }
 
     override fun onPause() {
-        if (appLockEnabled && !authenticationInProgress) appUnlocked = false
+        if (appLockEnabled && !authenticationInProgress) { appUnlocked = false; promptAttempted = false }
         super.onPause()
     }
 
@@ -118,7 +119,7 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun authenticateApp() {
-        if (!appLockEnabled || appUnlocked || authenticationInProgress || isFinishing) return
+        if (!appLockEnabled || appUnlocked || authenticationInProgress || promptAttempted || isFinishing) return
         val authenticators = if (Build.VERSION.SDK_INT >= 30) {
             BiometricManager.Authenticators.BIOMETRIC_STRONG or
                 BiometricManager.Authenticators.DEVICE_CREDENTIAL
@@ -131,6 +132,7 @@ class MainActivity : FragmentActivity() {
             .setAllowedAuthenticators(authenticators)
         if (Build.VERSION.SDK_INT < 30) builder.setNegativeButtonText("إلغاء")
         authenticationInProgress = true
+        promptAttempted = true
         val prompt = BiometricPrompt(
             this,
             ContextCompat.getMainExecutor(this),
@@ -138,6 +140,7 @@ class MainActivity : FragmentActivity() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     authenticationInProgress = false
                     appUnlocked = true
+                    promptAttempted = false
                 }
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     authenticationInProgress = false
