@@ -71,7 +71,8 @@ class RecurringViewModel(application: Application) : AndroidViewModel(applicatio
                     accountId = account.id, categoryId = category.id,
                     intervalType = "MONTHLY", intervalCount = 1,
                     nextRunEpochMillis = firstRun, endEpochMillis = null, isActive = true,
-                    createdAtEpochMillis = now
+                    createdAtEpochMillis = now,
+                    dayOfMonth = requestedDay
                 )
             )
         }
