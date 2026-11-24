@@ -32,6 +32,9 @@ interface DebtDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertRepayment(repayment: DebtRepaymentEntity)
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertLedgerTransaction(transaction: TransactionEntity)
+
     @Query("UPDATE debts SET status = :status, updatedAtEpochMillis = :updatedAt WHERE id = :id")
     suspend fun updateStatus(id: String, status: String, updatedAt: Long): Int
 
@@ -46,8 +49,7 @@ interface DebtDao {
     @Transaction
     suspend fun recordRepaymentWithLedger(
         repayment: DebtRepaymentEntity,
-        transaction: TransactionEntity,
-        transactionDao: TransactionDao
+        transaction: TransactionEntity
     ): DebtBalance {
         require(repayment.amountMinor > 0L) { "Repayment must be positive" }
         val debt = requireNotNull(findById(repayment.debtId)) { "Debt not found" }
@@ -62,7 +64,7 @@ interface DebtDao {
             "Repayment exceeds outstanding balance"
         }
         insertRepayment(repayment)
-        transactionDao.insert(transaction)
+        insertLedgerTransaction(transaction)
         if (repayment.amountMinor == outstanding) {
             updateStatus(debt.id, "CLOSED", repayment.createdAtEpochMillis)
         }
