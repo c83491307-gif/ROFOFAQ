@@ -9,6 +9,29 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TransactionDao {
+    @Query("""
+        SELECT currencyCode, currencyExponent,
+            COALESCE(SUM(CASE WHEN transactionType = 'INCOME' THEN amountMinor ELSE 0 END), 0) AS incomeMinor,
+            COALESCE(SUM(CASE WHEN transactionType = 'EXPENSE' THEN amountMinor ELSE 0 END), 0) AS expenseMinor,
+            COUNT(*) AS transactionCount
+        FROM transactions
+        GROUP BY currencyCode, currencyExponent
+        ORDER BY currencyCode, currencyExponent
+    """)
+    fun observeTotalsByCurrency(): Flow<List<CurrencyTransactionTotals>>
+
+    @Query("""
+        SELECT strftime('%Y-%m', occurredAtEpochMillis / 1000, 'unixepoch') AS month,
+            currencyCode, currencyExponent,
+            COALESCE(SUM(CASE WHEN transactionType = 'INCOME' THEN amountMinor ELSE 0 END), 0) AS incomeMinor,
+            COALESCE(SUM(CASE WHEN transactionType = 'EXPENSE' THEN amountMinor ELSE 0 END), 0) AS expenseMinor
+        FROM transactions
+        WHERE occurredAtEpochMillis >= :fromEpochMillis AND occurredAtEpochMillis < :toEpochMillis
+        GROUP BY month, currencyCode, currencyExponent
+        ORDER BY month, currencyCode, currencyExponent
+    """)
+    fun observeMonthlyCashFlow(fromEpochMillis: Long, toEpochMillis: Long): Flow<List<MonthlyCashFlow>>
+
     @Query("SELECT * FROM transactions ORDER BY occurredAtEpochMillis DESC LIMIT 250")
     fun observeRecent(): Flow<List<TransactionEntity>>
 
