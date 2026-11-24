@@ -16,6 +16,7 @@ import com.creazzy.rofof.data.local.LocalPreferenceEntity
 import com.creazzy.rofof.data.local.RofofDatabase
 import com.creazzy.rofof.data.repository.RoomTransactionRepository
 import com.creazzy.rofof.domain.model.LedgerTransaction
+import com.creazzy.rofof.core.money.AmountInputParser
 import com.creazzy.rofof.feature.awareness.AwarenessAdvisor
 import com.creazzy.rofof.feature.awareness.BudgetRuleNotificationDispatcher
 import com.creazzy.rofof.feature.awareness.AwarenessEntryReview
@@ -30,6 +31,7 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 import java.time.LocalDate
 
 data class SafeToSpendState(
@@ -41,6 +43,9 @@ data class SafeToSpendState(
 )
 
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
+    private val transactionWriteLock = AtomicBoolean(false)
+    private val _isSavingTransaction = MutableStateFlow(false)
+    val isSavingTransaction = _isSavingTransaction.asStateFlow()
     private val database = RofofDatabase.getInstance(application)
     private val financeRepository = RoomFinanceRepository(database)
     private val budgetRuleNotifications = BudgetRuleNotificationDispatcher(application, database)
@@ -283,73 +288,85 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch { runCatching { repository.permanentlyDeleteFromTrash(id) } }
     }
 
-    fun addTransaction(title: String, amount: String, category: String, type: String, accountId: String = RoomTransactionRepository.DEFAULT_ACCOUNT_ID, occurredAtEpochMillis: Long = System.currentTimeMillis()) {
+    fun addTransaction(
+        title: String,
+        amount: String,
+        category: String,
+        type: String,
+        accountId: String = RoomTransactionRepository.DEFAULT_ACCOUNT_ID,
+        occurredAtEpochMillis: Long = System.currentTimeMillis()
+    ) {
         val cleanTitle = title.trim()
-        if (cleanTitle.isEmpty() || (type != "INCOME" && type != "EXPENSE")) return
+        if (cleanTitle.isEmpty() || (type != "INCOME" && type != "EXPENSE")) {
+            _financeActionMessage.value = if (language.value == "ar") "أدخل اسم العملية واختر نوعاً صحيحاً." else "Enter a transaction name and a valid type."
+            return
+        }
+        if (!transactionWriteLock.compareAndSet(false, true)) return
+        _isSavingTransaction.value = true
         viewModelScope.launch {
-            repository.ensureDefaults()
-            val account = database.accountDao().findById(accountId)?.takeIf { !it.isArchived } ?: return@launch
-            val minorUnits = runCatching {
-                BigDecimal(amount.trim().replace(',', '.'))
-                    .setScale(account.currencyExponent, RoundingMode.UNNECESSARY)
-                    .movePointRight(account.currencyExponent)
-                    .longValueExact()
-            }.getOrNull() ?: return@launch
-            if (minorUnits <= 0L) return@launch
-            val categoryName = category.trim().ifEmpty { "General" }
-            val categoryId = database.categoryDao().findByNameAndType(categoryName, type)?.id
-                ?: UUID.randomUUID().toString().also { id ->
-                    database.categoryDao().insertIfAbsent(
-                        CategoryEntity(
-                            id = id,
-                            name = categoryName,
-                            transactionType = type,
-                            parentId = null,
-                            isArchived = false,
-                            createdAtEpochMillis = System.currentTimeMillis()
+            try {
+                repository.ensureDefaults()
+                val account = database.accountDao().findById(accountId)?.takeIf { !it.isArchived }
+                    ?: error(if (language.value == "ar") "الحساب المحدد غير متاح." else "The selected account is unavailable.")
+                val minorUnits = AmountInputParser.toMinorUnits(amount, account.currencyExponent)
+                    ?: error(if (language.value == "ar") "أدخل مبلغاً أكبر من صفر وبعدد منازل عشرية صحيح." else "Enter an amount greater than zero with valid decimal precision.")
+                val categoryName = category.trim().ifEmpty { "General" }
+                val categoryId = database.categoryDao().findByNameAndType(categoryName, type)?.id
+                    ?: UUID.randomUUID().toString().also { id ->
+                        database.categoryDao().insertIfAbsent(
+                            CategoryEntity(
+                                id = id,
+                                name = categoryName,
+                                transactionType = type,
+                                parentId = null,
+                                isArchived = false,
+                                createdAtEpochMillis = System.currentTimeMillis()
+                            )
                         )
-                    )
-                }.let {
-                    database.categoryDao().findByNameAndType(categoryName, type)?.id ?: it
-                }
+                    }.let { database.categoryDao().findByNameAndType(categoryName, type)?.id ?: it }
 
-            val now = System.currentTimeMillis()
-            repository.add(
-                LedgerTransaction(
-                    id = UUID.randomUUID().toString(),
-                    title = cleanTitle,
-                    transactionType = type,
-                    amountMinor = minorUnits,
-                    currencyCode = account.currencyCode,
-                    currencyExponent = account.currencyExponent,
-                    accountId = account.id,
-                    categoryId = categoryId,
-                    occurredAtEpochMillis = occurredAtEpochMillis,
-                    createdAtEpochMillis = now,
-                    notes = null
+                val now = System.currentTimeMillis()
+                repository.add(
+                    LedgerTransaction(
+                        id = UUID.randomUUID().toString(),
+                        title = cleanTitle,
+                        transactionType = type,
+                        amountMinor = minorUnits,
+                        currencyCode = account.currencyCode,
+                        currencyExponent = account.currencyExponent,
+                        accountId = account.id,
+                        categoryId = categoryId,
+                        occurredAtEpochMillis = occurredAtEpochMillis,
+                        createdAtEpochMillis = now,
+                        notes = null
+                    )
                 )
-            )
-            val learningKey = cleanTitle
-                .replace(Regex("""[٠-٩۰-۹0-9]+([٫.,][٠-٩۰-۹0-9]+)?"""), " ")
-                .replace(Regex("\\s+"), " ")
-                .trim()
-                .lowercase()
-            if (learningKey.length >= 2) {
-                database.learnedKeywordDao().insert(LearnedKeyword(learningKey, categoryId))
-            }
-
-            if (type == "EXPENSE") {
-                runCatching {
-                    budgetRuleNotifications.dispatchForExpense(
-                        categoryId, account.currencyCode, account.currencyExponent,
-                        occurredAtEpochMillis, language.value
-                    )
+                val learningKey = cleanTitle
+                    .replace(Regex("""[٠-٩۰-۹0-9]+([٫.,][٠-٩۰-۹0-9]+)?"""), " ")
+                    .replace(Regex("\\s+"), " ")
+                    .trim()
+                    .lowercase()
+                if (learningKey.length >= 2) {
+                    database.learnedKeywordDao().insert(LearnedKeyword(learningKey, categoryId))
                 }
+                if (type == "EXPENSE") {
+                    runCatching {
+                        budgetRuleNotifications.dispatchForExpense(
+                            categoryId, account.currencyCode, account.currencyExponent,
+                            occurredAtEpochMillis, language.value
+                        )
+                    }
+                }
+                ExpenseWidgetUpdater.refresh(getApplication())
+                _financeActionMessage.value = if (language.value == "ar") "تم حفظ العملية بنجاح." else "Transaction saved."
+            } catch (error: Throwable) {
+                _financeActionMessage.value = localizeFinanceError(error.message.orEmpty())
+            } finally {
+                transactionWriteLock.set(false)
+                _isSavingTransaction.value = false
             }
-            ExpenseWidgetUpdater.refresh(getApplication())
         }
     }
-
 
     fun updateTransaction(
         original: LedgerTransaction,
@@ -361,31 +378,32 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         occurredAtEpochMillis: Long
     ) {
         val cleanTitle = title.trim()
-        if (cleanTitle.isEmpty() || (type != "INCOME" && type != "EXPENSE")) return
+        if (cleanTitle.isEmpty() || (type != "INCOME" && type != "EXPENSE")) {
+            _financeActionMessage.value = if (language.value == "ar") "أدخل اسم العملية واختر نوعاً صحيحاً." else "Enter a transaction name and a valid type."
+            return
+        }
+        if (!transactionWriteLock.compareAndSet(false, true)) return
+        _isSavingTransaction.value = true
         viewModelScope.launch {
-            val account = database.accountDao().findById(accountId)?.takeIf { !it.isArchived } ?: return@launch
-            val minorUnits = runCatching {
-                BigDecimal(amount.trim().replace(',', '.'))
-                    .setScale(account.currencyExponent, RoundingMode.UNNECESSARY)
-                    .movePointRight(account.currencyExponent)
-                    .longValueExact()
-            }.getOrNull() ?: return@launch
-            if (minorUnits <= 0L) return@launch
-            val categoryName = category.trim().ifEmpty { "General" }
-            val categoryId = database.categoryDao().findByNameAndType(categoryName, type)?.id
-                ?: UUID.randomUUID().toString().also { id ->
-                    database.categoryDao().insertIfAbsent(
-                        CategoryEntity(
-                            id = id,
-                            name = categoryName,
-                            transactionType = type,
-                            parentId = null,
-                            isArchived = false,
-                            createdAtEpochMillis = System.currentTimeMillis()
+            try {
+                val account = database.accountDao().findById(accountId)?.takeIf { !it.isArchived }
+                    ?: error(if (language.value == "ar") "الحساب المحدد غير متاح." else "The selected account is unavailable.")
+                val minorUnits = AmountInputParser.toMinorUnits(amount, account.currencyExponent)
+                    ?: error(if (language.value == "ar") "أدخل مبلغاً أكبر من صفر وبعدد منازل عشرية صحيح." else "Enter an amount greater than zero with valid decimal precision.")
+                val categoryName = category.trim().ifEmpty { "General" }
+                val categoryId = database.categoryDao().findByNameAndType(categoryName, type)?.id
+                    ?: UUID.randomUUID().toString().also { id ->
+                        database.categoryDao().insertIfAbsent(
+                            CategoryEntity(
+                                id = id,
+                                name = categoryName,
+                                transactionType = type,
+                                parentId = null,
+                                isArchived = false,
+                                createdAtEpochMillis = System.currentTimeMillis()
+                            )
                         )
-                    )
-                }.let { database.categoryDao().findByNameAndType(categoryName, type)?.id ?: it }
-            runCatching {
+                    }.let { database.categoryDao().findByNameAndType(categoryName, type)?.id ?: it }
                 repository.update(
                     original.copy(
                         title = cleanTitle,
@@ -398,9 +416,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                         occurredAtEpochMillis = occurredAtEpochMillis
                     )
                 )
-            }.onFailure {
-                _financeActionMessage.value = localizeFinanceError(it.message.orEmpty())
-            }.onSuccess {
                 if (original.transactionType == "EXPENSE") {
                     runCatching {
                         budgetRuleNotifications.dispatchForExpense(
@@ -419,6 +434,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 }
                 ExpenseWidgetUpdater.refresh(getApplication())
                 _financeActionMessage.value = if (language.value == "ar") "تم تحديث العملية المالية." else "Transaction updated."
+            } catch (error: Throwable) {
+                _financeActionMessage.value = localizeFinanceError(error.message.orEmpty())
+            } finally {
+                transactionWriteLock.set(false)
+                _isSavingTransaction.value = false
             }
         }
     }
