@@ -121,7 +121,7 @@ fun DashboardScreen(
                     }
                     FilledTonalButton(
                         onClick = { expenseViewModel.setLanguage(if (isArabic) "en" else "ar") },
-                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color.White, contentColor = MaterialTheme.colorScheme.onSurface)
+                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface)
                     ) { Text(if (isArabic) "EN  ·  LTR" else "عربي  ·  RTL") }
                 }
 
@@ -147,12 +147,12 @@ fun DashboardScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Brush.linearGradient(listOf(Color(0xFF183C36), Color(0xFF126B57))))
+                            .background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary)))
                             .padding(20.dp)
                     ) {
-                        Text(words.netBalance, color = Color(0xFFB9D6CC), style = MaterialTheme.typography.titleSmall)
+                        Text(words.netBalance, color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleSmall)
                         Spacer(Modifier.height(8.dp))
-                        Text(formatEgp(net, language), color = Color.White, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                        Text(formatEgp(net, language), color = MaterialTheme.colorScheme.surface, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(18.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             BalanceMetric(words.income, income, MaterialTheme.colorScheme.primary, language, Modifier.weight(1f))
@@ -165,7 +165,7 @@ fun DashboardScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text(
@@ -204,7 +204,7 @@ fun DashboardScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
                         Column(
                             Modifier.fillMaxWidth().padding(16.dp),
@@ -248,7 +248,7 @@ fun DashboardScreen(
                     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Box(
-                                modifier = Modifier.size(66.dp).background(Color.White, CircleShape),
+                                modifier = Modifier.size(66.dp).background(MaterialTheme.colorScheme.surface, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) { Text("＋", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineLarge) }
                             Spacer(Modifier.height(14.dp))
@@ -361,7 +361,7 @@ fun DashboardScreen(
                 ) { Text(words.delete) }
             },
             dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(words.cancel) } },
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
@@ -375,7 +375,7 @@ fun DashboardScreen(
                     Text(if (isArabic) "حسناً" else "OK")
                 }
             },
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 }
@@ -384,12 +384,12 @@ fun DashboardScreen(
 private fun BalanceMetric(label: String, amount: Long, color: Color, language: String, modifier: Modifier) {
     Column(
         modifier = modifier
-            .background(Color.White.copy(alpha = 0.10f), RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.10f), RoundedCornerShape(16.dp))
             .padding(12.dp)
     ) {
-        Text(label, color = Color(0xFFD0E5DE), style = MaterialTheme.typography.labelMedium)
+        Text(label, color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelMedium)
         Spacer(Modifier.height(4.dp))
-        Text(formatEgp(amount, language), color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(formatEgp(amount, language), color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 
@@ -406,7 +406,7 @@ private fun TransactionRow(
     val isIncome = transaction.transactionType == "INCOME"
     Card(
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
@@ -414,7 +414,7 @@ private fun TransactionRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier.size(44.dp).background(Color(0xFFE8F3EF), RoundedCornerShape(14.dp)),
+                modifier = Modifier.size(44.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center
             ) { Text(if (isIncome) "＋" else "−", color = if (isIncome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleLarge) }
             Spacer(Modifier.width(12.dp))
@@ -486,16 +486,16 @@ private fun AddTransactionDialog(
                     FilledTonalButton(
                         onClick = { type = "EXPENSE" },
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (type == "EXPENSE") MaterialTheme.colorScheme.primary else Color(0xFFEAF0ED),
-                            contentColor = if (type == "EXPENSE") Color.White else MaterialTheme.colorScheme.onSurface
+                            containerColor = if (type == "EXPENSE") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (type == "EXPENSE") MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier.weight(1f)
                     ) { Text(words.expenses) }
                     FilledTonalButton(
                         onClick = { type = "INCOME" },
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (type == "INCOME") MaterialTheme.colorScheme.primary else Color(0xFFEAF0ED),
-                            contentColor = if (type == "INCOME") Color.White else MaterialTheme.colorScheme.onSurface
+                            containerColor = if (type == "INCOME") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (type == "INCOME") MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier.weight(1f)
                     ) { Text(words.income) }
@@ -532,7 +532,7 @@ private fun AddTransactionDialog(
                         enabled = smartCommand.isNotBlank() && accountId.isNotBlank()
                     ) { Text(if (language == "ar") "حلّل وراجع" else "Analyze & review") }
                     awarenessReview?.takeIf { it.sourceText == smartCommand }?.let { review ->
-                        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F6F2)), shape = RoundedCornerShape(14.dp)) {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer), shape = RoundedCornerShape(14.dp)) {
                             Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(if (language == "ar") "مراجعة الاقتراح المحلي" else "Local suggestion review", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                                 Text((if (language == "ar") "النوع: " else "Type: ") + if (review.transactionType == "INCOME") words.income else words.expenses)
@@ -606,7 +606,7 @@ private fun AddTransactionDialog(
             ) { Text(if (isSaving) { if (language == "ar") "جارٍ الحفظ…" else "Saving…" } else words.save) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(words.cancel) } },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.surface
     )
     if (showDatePicker) {
         DatePickerDialog(
