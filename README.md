@@ -72,3 +72,12 @@ gradle connectedDebugAndroidTest
 - [ ] Optional OCR and future web/sync extensions.
 
 The checked items above describe delivered source functionality, not a claim that the latest branch has passed CI. See the implementation reports for exact verification evidence, including [Priority 2 shared purchases](docs/implementation/PHASE_4_SHARED_PURCHASES.md).
+
+
+## Latest local enhancements
+
+- Voice-assisted entry with runtime microphone permission, Arabic/English locale selection, and local parsing of common spoken Arabic amount words. Offline recognition depends on the device speech service and downloaded language pack; offline mode is requested but cannot be guaranteed by the app.
+- Explicit smart paste review for bank messages, four frequently used expense categories, recent-five amount suggestions scoped by currency, and save-success haptics.
+- New offline operational engines for data quality, lineage, differential backup planning, recovery manifest checks, approvals, rules, budget suggestions, sensitive-operation guards, tax-document metadata, merchant aliases, localization checks, allowlisted plugins, seasonality, sensitivity and health checks.
+
+See [new enhancements and V6.0 input implementation](docs/implementation/NEW_15_ENHANCEMENTS_AND_V6_INPUT.md) for implementation boundaries and verification status. These engines are foundations; the document lists persistence and product-integration gates that remain open.
