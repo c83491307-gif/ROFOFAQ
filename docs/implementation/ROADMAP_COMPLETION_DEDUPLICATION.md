@@ -55,3 +55,29 @@
 ## CI resilience note
 
 A previous verification attempt compiled Kotlin sources, then failed before test execution because Maven Central returned HTTP 429 while resolving a Robolectric artifact. This is an external dependency-rate-limit failure, not a test assertion failure. The Android CI workflow now retries unit tests and emulator instrumentation with bounded backoff. A passing result is still required on the exact branch head before merge or release.
+
+## Main divergence reconciliation — 2026-11-24
+
+The four commits on `main` after merge base `a77e997ea409381213d68aabdf897e1f0c6f67b7` were reviewed individually. The integration branch remains the source of truth for the cumulative Android implementation; this reconciliation is documentation-only and does not import the older proposed architecture.
+
+| Main commit | Change | Integration-branch disposition |
+|---|---|---|
+| `199fbe0e57f3f289bae98434fcb9640988221c61` | Added Arabic overview and original personal-finance feature roadmap to README | Preserved the product goals in the README's product direction and the Arabic roadmap section. Implementation checkboxes/status remain governed by source evidence, not the older all-pending checklist. |
+| `86705e97b843b8f4d493f8069877f6de2518b0e9` | Added backend/Go/FastAPI/Vue/Flutter/PWA architecture and technology proposals | Intentionally superseded for current delivery by accepted native Android + Kotlin + Compose + Room + offline-first decisions in `docs/architecture/DECISIONS.md`. Backend, web/PWA and sync remain optional future extensions, not current implementation requirements. |
+| `4ee798393e48d884ba99d08d49db216f8710050c` | Added focused debug APK workflow | Preserved; final workflow exists on both branches. |
+| `1c1f70b19b7e012b9140c10930bb97eb6f059c3c` | Restricted automatic APK workflow pushes to the integration branch | Preserved exactly; `.github/workflows/build.yml` has identical blob SHA `24b519b862e5005c512ea03ef08fab1c978a3a7c` on `main` and `feat/rofof-apk-integration`. |
+
+### Safe reconciliation decision
+
+- No workflow copy or edit is needed: the final workflow content is byte-identical on both refs.
+- The README conflict is semantic, not a source-code conflict. The integration README keeps the product roadmap, now explicitly retains its Arabic roadmap, and keeps the accepted Android architecture authoritative. It does not restore the superseded backend/Flutter proposal as the current architecture.
+- The main README's original feature checklist marked almost every item pending. Those marks are not copied because current source already implements several items; current status remains mapped in `docs/discovery/README_REQUIREMENTS_APPLIED_PLAN.md` and the phase reports.
+- No application source, database migration, build configuration, or existing test was replaced as part of this reconciliation.
+- This records a branch-local semantic resolution; it does not change the merge base, rewrite history, or make the PR mergeable by itself. GitHub still needs to recalculate PR mergeability, and exact-head CI/artifact verification remains a separate gate.
+
+### Main-only commits reviewed
+
+- `199fbe0e57f3f289bae98434fcb9640988221c61`
+- `86705e97b843b8f4d493f8069877f6de2518b0e9`
+- `4ee798393e48d884ba99d08d49db216f8710050c`
+- `1c1f70b19b7e012b9140c10930bb97eb6f059c3c`
