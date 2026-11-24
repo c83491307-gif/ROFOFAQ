@@ -58,6 +58,11 @@ class DebtManagementRepository(private val database: RofofDatabase) {
             debt.currencyCode, debt.currencyExponent
         ) ?: error("No active account matches this debt currency")
         val transactionType = if (debt.direction == "OWED_TO_ME") "INCOME" else "EXPENSE"
+        if (transactionType == "EXPENSE") {
+            val balance = database.accountDao().findBalance(account.id)?.balanceMinor
+                ?: error("Account balance could not be read")
+            require(balance >= current.outstandingMinor) { "Insufficient account balance to settle this debt" }
+        }
         val categoryName = if (transactionType == "INCOME") "Debt repayment received" else "Debt repayment paid"
         val categoryId = database.categoryDao().findByNameAndType(categoryName, transactionType)?.id
             ?: UUID.randomUUID().toString().also { id ->
