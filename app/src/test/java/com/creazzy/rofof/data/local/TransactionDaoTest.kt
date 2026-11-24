@@ -179,7 +179,11 @@ class TransactionDaoTest {
         val dao = database.transactionDao()
         dao.insert(TransactionEntity("one", "A", "EXPENSE", 100, "EGP", 2, "cash", "general", 1L, 1L, null))
         dao.insert(TransactionEntity("two", "B", "INCOME", 200, "EGP", 2, "cash", "general", 2L, 2L, null))
-        dao.delete("one")
+        assertEquals(1, dao.moveToTrash("one", 3L))
+        assertEquals(listOf("two"), dao.observeRecent().first().map { it.id })
+        assertEquals(listOf("one"), dao.observeTrash().first().map { it.id })
+        assertEquals(1, dao.deletePermanently("one"))
+        assertEquals(null, dao.findById("one"))
         assertEquals(listOf("two"), dao.observeRecent().first().map { it.id })
     }
 
