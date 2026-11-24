@@ -29,8 +29,6 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -87,9 +85,334 @@ fun DashboardScreen(
     val financeActionMessage by expenseViewModel.financeActionMessage.collectAsState()
     val isSavingTransaction by expenseViewModel.isSavingTransaction.collectAsState()
     val awarenessReview by expenseViewModel.awarenessReview.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    LaunchedEffect(financeActionMessage) {
+    val isArabic = language == "ar"
+    val direction = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
+    val words = if (isArabic) Arabic else English
+    var showAdd by rememberSaveable { mutableStateOf(false) }
+    var showAccounts by rememberSaveable { mutableStateOf(false) }
+    var showTransfer by rememberSaveable { mutableStateOf(false) }
+    var showCategories by rememberSaveable { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<LedgerTransaction?>(null) }
+    var pendingEdit by remember { mutableStateOf<LedgerTransaction?>(null) }
+
+    LaunchedEffect(openAddInitially) {
+        if (openAddInitially) {
+            showAdd = true
+            onQuickAddConsumed()
+        }
     }
+
+    val income = totals.incomeMinor
+    val expenses = totals.expenseMinor
+    val net = accounts.asSequence()
+        .filter { it.currencyCode == "EGP" && it.currencyExponent == 2 }
+        .fold(0L) { total, account -> Math.addExact(total, account.balanceMinor) }
+    val categoryNames = categories.associate { it.id to it.name }
+
+    androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides direction) {
+        Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+                Spacer(Modifier.height(18.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(words.greeting, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
+                        Text("ROFOF", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+                    }
+                    FilledTonalButton(
+                        onClick = { expenseViewModel.setLanguage(if (isArabic) "en" else "ar") },
+                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface)
+                    ) { Text(if (isArabic) "EN  ·  LTR" else "عربي  ·  RTL") }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth()) {
+                    FilledTonalButton(onClick = { showAccounts = true }, modifier = Modifier.weight(1f)) {
+                        Text(if (isArabic) "الحسابات" else "Accounts")
+                    }
+                    FilledTonalButton(onClick = { showTransfer = true }, modifier = Modifier.weight(1f)) {
+                        Text(if (isArabic) "تحويل" else "Transfer")
+                    }
+                    FilledTonalButton(onClick = { showCategories = true }, modifier = Modifier.weight(1f)) {
+                        Text(if (isArabic) "الفئات" else "Categories")
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(26.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.onSurface)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary)))
+                            .padding(20.dp)
+                    ) {
+                        Text(words.netBalance, color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleSmall)
+                        Spacer(Modifier.height(8.dp))
+                        Text(formatEgp(net, language), color = MaterialTheme.colorScheme.surface, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(18.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            BalanceMetric(words.income, income, MaterialTheme.colorScheme.primary, language, Modifier.weight(1f))
+                            BalanceMetric(words.expenses, expenses, MaterialTheme.colorScheme.error, language, Modifier.weight(1f))
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        Text(
+                            if (isArabic) "المتبقي الآمن للإنفاق اليومي" else "Safe to spend today",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        if (safeToSpend.hasBudget) {
+                            Text(
+                                formatEgp(safeToSpend.dailySafeMinor, language),
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                if (isArabic) "بناءً على الميزانية والمصروفات المسجلة · ${safeToSpend.daysRemaining} يومًا متبقيًا"
+                                else "Based on recorded budget and expenses · ${safeToSpend.daysRemaining} days remaining",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        } else {
+                            Text(
+                                if (isArabic) "حدد ميزانيتك الشهرية أولاً لحساب المبلغ الآمن."
+                                else "Set a monthly budget to calculate your safe daily amount.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+
+                if (insights.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(
+                            Modifier.fillMaxWidth().padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(9.dp)
+                        ) {
+                            Text(
+                                if (isArabic) "رؤى مالية ذكية" else "Smart financial insights",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            insights.forEach { insight ->
+                                Row(verticalAlignment = Alignment.Top) {
+                                    Text("✦", color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(end = 8.dp))
+                                    Text(insight, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(words.recent, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text(words.savedEntries(transactions.size), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Button(
+                        onClick = { showAdd = true },
+                        shape = RoundedCornerShape(15.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) { Text(words.addTransaction) }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                if (!transactionsLoaded) {
+                    Column(
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        repeat(3) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().height(76.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                shape = RoundedCornerShape(18.dp)
+                            ) { Box(Modifier.fillMaxSize()) }
+                        }
+                    }
+                } else if (transactionsLoadError != null) {
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(
+                                if (isArabic) "تعذر تحميل العمليات المالية." else "Could not load transactions.",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                transactionsLoadError.orEmpty(),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Button(onClick = expenseViewModel::retryTransactions) {
+                                Text(if (isArabic) "إعادة المحاولة" else "Retry")
+                            }
+                        }
+                    }
+                } else if (transactions.isEmpty()) {
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier.size(66.dp).background(MaterialTheme.colorScheme.surface, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) { Text("＋", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineLarge) }
+                            Spacer(Modifier.height(14.dp))
+                            Text(words.emptyTitle, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(words.emptyBody, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        items(transactions, key = { it.id }) { transaction ->
+                            TransactionRow(
+                                transaction = transaction,
+                                categoryName = categoryNames[transaction.categoryId] ?: words.general,
+                                language = language,
+                                deleteLabel = words.delete,
+                                editLabel = words.edit,
+                                onEdit = { pendingEdit = transaction },
+                                onDelete = { pendingDelete = transaction }
+                            )
+                        }
+                        item { Spacer(Modifier.height(18.dp)) }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAccounts) {
+        AccountManagerDialog(
+            accounts = managedAccounts,
+            language = language,
+            onCreate = expenseViewModel::createAccount,
+            onRename = expenseViewModel::renameAccount,
+            onArchive = expenseViewModel::archiveAccount,
+            onDismiss = { showAccounts = false }
+        )
+    }
+    if (showTransfer) {
+        TransferDialog(
+            accounts = accounts,
+            language = language,
+            onTransfer = { from, to, amount, note ->
+                expenseViewModel.transfer(from, to, amount, note)
+                showTransfer = false
+            },
+            onDismiss = { showTransfer = false }
+        )
+    }
+    if (showCategories) {
+        CategoryManagerDialog(
+            categories = managedCategories,
+            language = language,
+            onCreate = expenseViewModel::createCategory,
+            onRename = expenseViewModel::renameCategory,
+            onArchive = expenseViewModel::archiveCategory,
+            onDismiss = { showCategories = false }
+        )
+    }
+
+    if (showAdd) {
+        AddTransactionDialog(
+            words = words,
+            language = language,
+            accounts = accounts,
+            learnedKeywords = learnedKeywordSuggestions,
+            onDismiss = { showAdd = false },
+            onAnalyze = { command, accountId, occurredAt -> expenseViewModel.analyzeSmartEntry(command, accountId, occurredAt) },
+            awarenessReview = awarenessReview,
+            onClearReview = expenseViewModel::clearAwarenessReview,
+            isSaving = isSavingTransaction,
+            onSave = { title, amount, category, type, accountId, occurredAt ->
+                expenseViewModel.addTransaction(title, amount, category, type, accountId, occurredAt)
+                showAdd = false
+            }
+        )
+    }
+
+    pendingEdit?.let { transaction ->
+        AddTransactionDialog(
+            words = words,
+            language = language,
+            accounts = accounts,
+            learnedKeywords = learnedKeywordSuggestions,
+            initialTransaction = transaction,
+            isSaving = isSavingTransaction,
+            initialCategoryName = categoryNames[transaction.categoryId] ?: words.general,
+            onDismiss = { pendingEdit = null },
+            onSave = { title, amount, category, type, accountId, occurredAt ->
+                expenseViewModel.updateTransaction(transaction, title, amount, category, type, accountId, occurredAt)
+                pendingEdit = null
+            }
+        )
+    }
+
+    pendingDelete?.let { transaction ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text(words.confirmDelete, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+            text = { Text(words.confirmDeleteBody) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        expenseViewModel.deleteTransaction(transaction.id)
+                        pendingDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text(words.delete) }
+            },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(words.cancel) } },
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+
+    financeActionMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = expenseViewModel::clearFinanceActionMessage,
+            title = { Text(if (isArabic) "إدارة الحسابات والفئات" else "Account & category management") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = expenseViewModel::clearFinanceActionMessage) {
+                    Text(if (isArabic) "حسناً" else "OK")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+}
 
 @Composable
 private fun BalanceMetric(label: String, amount: Long, color: Color, language: String, modifier: Modifier) {
