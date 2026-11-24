@@ -95,9 +95,9 @@ fun ROFOFRootScreen(
     }
 
     Scaffold(
-        containerColor = Color(0xFFF4F7F5),
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            NavigationBar(containerColor = Color.White) {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                 rootDestinations.forEach { destination ->
                     NavigationBarItem(
                         selected = currentRoute == destination.route,
@@ -189,7 +189,7 @@ private fun TransactionsRoute(viewModel: ExpenseViewModel) {
             items(transactions, key = { it.id }) { item ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(Modifier.fillMaxWidth().padding(14.dp)) {
                         Text(item.title, color = Color(0xFF172B2A), style = MaterialTheme.typography.titleMedium)
@@ -204,6 +204,9 @@ private fun TransactionsRoute(viewModel: ExpenseViewModel) {
                             color = Color(0xFF71817D),
                             style = MaterialTheme.typography.bodySmall
                         )
+                        TextButton(onClick = { viewModel.deleteTransaction(item.id) }) {
+                            Text(if (ar) "نقل إلى سلة المحذوفات" else "Move to recycle bin")
+                        }
                     }
                 }
             }
