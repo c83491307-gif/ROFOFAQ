@@ -133,7 +133,7 @@ fun RecurringManagementScreen(onBack: () -> Unit) {
         OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("الاسم · Title") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("المبلغ · Amount (EGP)") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = dayOfMonth, onValueChange = { dayOfMonth = it.filter(Char::isDigit).take(2) }, label = { Text("يوم الشهر · Day (1–31)") }, modifier = Modifier.fillMaxWidth())
-        Button(onClick = { vm.addMonthlyExpense(title, amount, dayOfMonth); title = ""; amount = "" }, enabled = title.isNotBlank() && amount.isNotBlank() && dayOfMonth.toIntOrNull() in 1..31) {
+        Button(onClick = { vm.addMonthlyExpense(title, amount, dayOfMonth); title = ""; amount = "" }, enabled = title.isNotBlank() && amount.isNotBlank() && (dayOfMonth.toIntOrNull()?.let { it in 1..31 } == true)) {
             Text("إضافة قاعدة شهرية · Add monthly rule")
         }
         Button(onClick = { vm.generateDueDrafts() }, modifier = Modifier.fillMaxWidth()) {
