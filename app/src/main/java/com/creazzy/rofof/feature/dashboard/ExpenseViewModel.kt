@@ -210,9 +210,21 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         database.transactionDao().observeMonthlyInsightsSnapshot(
             "EGP", 2, monthStartMillis, nextMonthStartMillis
         ),
-        language
-    ) { snapshot, selectedLanguage ->
-        LocalInsightsEngine.generate(snapshot, System.currentTimeMillis(), selectedLanguage)
+        language,
+        database.transactionDao().observeMonthlyExpenseByWeekday(
+            "EGP", 2, monthStartMillis, nextMonthStartMillis
+        ),
+        safeToSpend
+    ) { snapshot, selectedLanguage, weekdayRows, budgetState ->
+        LocalInsightsEngine.generate(snapshot, System.currentTimeMillis(), selectedLanguage) +
+            SpendingPatternEngine.analyze(
+                weekdayRows = weekdayRows,
+                monthExpenseMinor = snapshot.totalExpenseMinor,
+                monthlyBudgetMinor = budgetState.monthlyBudgetMinor,
+                elapsedDays = currentMonth.dayOfMonth,
+                daysInMonth = currentMonth.lengthOfMonth(),
+                language = selectedLanguage
+            )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
