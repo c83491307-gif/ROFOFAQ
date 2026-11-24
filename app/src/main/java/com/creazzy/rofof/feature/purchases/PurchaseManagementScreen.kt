@@ -257,12 +257,12 @@ private fun PurchaseDetail(
                         allocated.forEach { a ->
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("${a.participantName}: ${money(a.amountMinor, session.currencyExponent)}")
-                                if (a.personalTransactionId == null) {
-                                    TextButton(onClick = { onConvert(a.allocationId) }) {
+                                when {
+                                    a.debtId != null -> Text(if (ar) "دُين مسجل" else "Debt recorded", color = PurchaseGreen)
+                                    a.personalTransactionId != null -> Text(if (ar) "مضاف للمصروفات" else "In My Expenses", color = PurchaseGreen)
+                                    else -> TextButton(onClick = { onConvert(a.allocationId) }) {
                                         Text(if (ar) "إضافة لمصروفاتي" else "Add to My Expenses")
                                     }
-                                } else {
-                                    Text(if (ar) "مضاف للمصروفات" else "In My Expenses", color = PurchaseGreen)
                                 }
                             }
                         }
@@ -281,8 +281,8 @@ private fun PurchaseDetail(
                 Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column {
                         Text(row.displayName, color = PurchaseInk)
-                        Text(if (ar) "المستحق: ${money(row.allocatedMinor, session.currencyExponent)} · المدفوع: ${money(row.paidMinor, session.currencyExponent)}"
-                            else "Share: ${money(row.allocatedMinor, session.currencyExponent)} · Paid: ${money(row.paidMinor, session.currencyExponent)}",
+                        Text(if (ar) "الحصة: ${money(row.allocatedMinor, session.currencyExponent)} · المدفوع: ${money(row.paidMinor, session.currencyExponent)} · الدين: ${money(row.debtMinor, session.currencyExponent)}"
+                            else "Share: ${money(row.allocatedMinor, session.currencyExponent)} · Paid: ${money(row.paidMinor, session.currencyExponent)} · Debt: ${money(row.debtMinor, session.currencyExponent)}",
                             color = Color.Gray)
                     }
                     Text(money(row.balanceMinor, session.currencyExponent), color = if (row.balanceMinor > 0) Color(0xFFB45B52) else PurchaseGreen)
