@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: rofof-debug-apk-\${{ github.ref }}
+  group: rofof-debug-apk-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -46,6 +46,7 @@ jobs:
           test -s app/src/main/assets/awareness/categories.json
           test -s app/src/main/assets/awareness/keywords_ar.json
           test -s app/src/main/assets/awareness/rules.json
+          python3 -c 'import json, pathlib; [json.loads(pathlib.Path(p).read_text(encoding="utf-8")) for p in ["app/src/main/assets/awareness/categories.json", "app/src/main/assets/awareness/keywords_ar.json", "app/src/main/assets/awareness/rules.json"]]'
           test -s app/src/main/AndroidManifest.xml
           test -s app/build.gradle.kts
           echo "Required Android source assets are present."
