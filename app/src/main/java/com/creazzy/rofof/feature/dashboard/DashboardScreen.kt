@@ -21,7 +21,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -599,7 +598,7 @@ private fun AddTransactionDialog(
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { value ->
-                        amount = value.filter { char -> char.isDigit() || char in "٫.,٬" || char.isWhitespace() }
+                        amount = value.filter { char -> char in '0'..'9' || char in '٠'..'٩' || char in '۰'..'۹' || char in "٫.,٬" || char.isWhitespace() }
                     },
                     label = { Text(words.amount) },
                     supportingText = {
