@@ -56,6 +56,10 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(transaction: TransactionEntity)
 
+    /** Room wraps a multi-row insert in one transaction; any conflict aborts the batch. */
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAll(transactions: List<TransactionEntity>)
+
     @Update
     suspend fun update(transaction: TransactionEntity): Int
 
