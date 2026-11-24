@@ -19,7 +19,8 @@ data class RecurringRuleEntity(
     val nextRunEpochMillis: Long,
     val endEpochMillis: Long?,
     val isActive: Boolean,
-    val createdAtEpochMillis: Long
+    val createdAtEpochMillis: Long,
+    val dayOfMonth: Int = 1
 )
 
 @Entity(
