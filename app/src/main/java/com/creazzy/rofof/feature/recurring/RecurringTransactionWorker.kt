@@ -44,7 +44,7 @@ class RecurringTransactionWorker(
                     return@forEach
                 }
 
-                val anchorDay = Instant.ofEpochMilli(rule.nextRunEpochMillis).atZone(zone).dayOfMonth
+                val anchorDay = rule.dayOfMonth.coerceIn(1, 31)
                 var scheduled = rule.nextRunEpochMillis
                 var processed = 0
                 while (scheduled <= now && processed < MAX_CATCH_UP_OCCURRENCES) {
