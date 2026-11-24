@@ -2,15 +2,14 @@ package com.creazzy.rofof.feature.analytics
 
 import com.creazzy.rofof.data.local.MonthlyCashFlow
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class CashFlowForecastTest {
     @Test fun projectsAverageSeparatelyForEachCurrency() {
         val rows = listOf(
-            MonthlyCashFlow("2026-01", "EGP", 2, 100_00, 60_00),
-            MonthlyCashFlow("2026-02", "EGP", 2, 120_00, 80_00),
-            MonthlyCashFlow("2026-01", "USD", 2, 50_00, 20_00)
+            MonthlyCashFlow("2026-01", "EGP", 2, 100_00L, 60_00L),
+            MonthlyCashFlow("2026-02", "EGP", 2, 120_00L, 80_00L),
+            MonthlyCashFlow("2026-01", "USD", 2, 50_00L, 20_00L)
         )
         val result = CashFlowForecast.project(rows)
         assertEquals(2, result.size)
@@ -22,8 +21,8 @@ class CashFlowForecastTest {
 
     @Test fun rejectsOverflowRatherThanReturningWrappedTotals() {
         val rows = listOf(
-            MonthlyCashFlow("2026-01", "EGP", 2, Long.MAX_VALUE, 0),
-            MonthlyCashFlow("2026-02", "EGP", 2, 1, 0)
+            MonthlyCashFlow("2026-01", "EGP", 2, Long.MAX_VALUE, 0L),
+            MonthlyCashFlow("2026-02", "EGP", 2, 1L, 0L)
         )
         org.junit.Assert.assertThrows(ArithmeticException::class.java) {
             CashFlowForecast.project(rows)
