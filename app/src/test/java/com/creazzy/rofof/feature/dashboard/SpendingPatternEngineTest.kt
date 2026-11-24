@@ -21,7 +21,6 @@ class SpendingPatternEngineTest {
             monthExpenseMinor = 12_000L,
             monthlyBudgetMinor = 20_000L,
             monthStartDate = java.time.LocalDate.of(2026, 11, 1),
-            monthStartDate = java.time.LocalDate.of(2026, 11, 1),
             elapsedDays = 10,
             daysInMonth = 30,
             language = "ar"
@@ -37,6 +36,7 @@ class SpendingPatternEngineTest {
             weekdayRows = emptyList(),
             monthExpenseMinor = 10_000L,
             monthlyBudgetMinor = 30_000L,
+            monthStartDate = java.time.LocalDate.of(2026, 11, 1),
             elapsedDays = 10,
             daysInMonth = 30,
             language = "en"
