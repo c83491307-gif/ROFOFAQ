@@ -26,9 +26,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RecurringRuleEntity::class,
         RecurringDraftEntity::class,
         DebtEntity::class,
-        DebtRepaymentEntity::class
+        DebtRepaymentEntity::class,
+        LearnedKeyword::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 abstract class RofofDatabase : RoomDatabase() {
@@ -42,6 +43,7 @@ abstract class RofofDatabase : RoomDatabase() {
     abstract fun budgetGoalDao(): BudgetGoalDao
     abstract fun recurringDao(): RecurringDao
     abstract fun debtDao(): DebtDao
+    abstract fun learnedKeywordDao(): LearnedKeywordDao
 
     companion object {
         @Volatile
@@ -340,6 +342,20 @@ abstract class RofofDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS learned_keywords (
+                        keyword TEXT NOT NULL PRIMARY KEY,
+                        categoryId TEXT NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_learned_keywords_categoryId ON learned_keywords (categoryId)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): RofofDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -347,7 +363,7 @@ abstract class RofofDatabase : RoomDatabase() {
                     RofofDatabase::class.java,
                     "rofof-local.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .build()
                     .also { instance = it }
             }
