@@ -20,7 +20,7 @@ class MathExpressionEvaluatorTest {
         assertNull(MathExpressionEvaluator.evaluate("5/0"))
         assertNull(MathExpressionEvaluator.evaluate("10+"))
         assertNull(MathExpressionEvaluator.evaluate("10-20"))
-        assertNull(MathExpressionEvaluator.evaluate("1/3"))
+        assertEquals(BigDecimal("0.33333333"), MathExpressionEvaluator.evaluate("1/3"))
     }
 
     @Test fun parserExtractsCalculatedAmountFromArabicQuickEntry() {
