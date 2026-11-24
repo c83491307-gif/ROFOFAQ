@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.YearMonth
 import java.util.UUID
@@ -44,9 +45,10 @@ class RecurringViewModel(application: Application) : AndroidViewModel(applicatio
     val rules = dao.observeRules().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val drafts = dao.observeDrafts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun addMonthlyExpense(title: String, amount: String) {
+    fun addMonthlyExpense(title: String, amount: String, dayOfMonth: String) {
         val cleanTitle = title.trim()
         if (cleanTitle.isBlank()) return
+        val requestedDay = dayOfMonth.toIntOrNull()?.takeIf { it in 1..31 } ?: return
         viewModelScope.launch {
             val account = db.accountDao().findById("default-cash") ?: return@launch
             val category = db.categoryDao().findById("default-expense-general") ?: return@launch
@@ -56,6 +58,11 @@ class RecurringViewModel(application: Application) : AndroidViewModel(applicatio
                     .movePointRight(account.currencyExponent).longValueExact()
             }.getOrNull()?.takeIf { it > 0L } ?: return@launch
             val now = System.currentTimeMillis()
+            val zone = ZoneId.systemDefault()
+            val today = LocalDate.now(zone)
+            val targetMonth = if (today.dayOfMonth <= requestedDay) YearMonth.from(today) else YearMonth.from(today).plusMonths(1)
+            val firstRun = targetMonth.atDay(minOf(requestedDay, targetMonth.lengthOfMonth()))
+                .atStartOfDay(zone).toInstant().toEpochMilli()
             dao.insertRule(
                 RecurringRuleEntity(
                     id = UUID.randomUUID().toString(), title = cleanTitle,
@@ -63,7 +70,7 @@ class RecurringViewModel(application: Application) : AndroidViewModel(applicatio
                     currencyCode = account.currencyCode, currencyExponent = account.currencyExponent,
                     accountId = account.id, categoryId = category.id,
                     intervalType = "MONTHLY", intervalCount = 1,
-                    nextRunEpochMillis = now, endEpochMillis = null, isActive = true,
+                    nextRunEpochMillis = firstRun, endEpochMillis = null, isActive = true,
                     createdAtEpochMillis = now
                 )
             )
@@ -117,6 +124,7 @@ fun RecurringManagementScreen(onBack: () -> Unit) {
     val drafts by vm.drafts.collectAsState()
     var title by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
+    var dayOfMonth by remember { mutableStateOf("1") }
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("المعاملات المتكررة · Recurring")
@@ -124,11 +132,12 @@ fun RecurringManagementScreen(onBack: () -> Unit) {
         }
         OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("الاسم · Title") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("المبلغ · Amount (EGP)") }, modifier = Modifier.fillMaxWidth())
-        Button(onClick = { vm.addMonthlyExpense(title, amount); title = ""; amount = "" }) {
+        OutlinedTextField(value = dayOfMonth, onValueChange = { dayOfMonth = it.filter(Char::isDigit).take(2) }, label = { Text("يوم الشهر · Day (1–31)") }, modifier = Modifier.fillMaxWidth())
+        Button(onClick = { vm.addMonthlyExpense(title, amount, dayOfMonth); title = ""; amount = "" }, enabled = title.isNotBlank() && amount.isNotBlank() && dayOfMonth.toIntOrNull() in 1..31) {
             Text("إضافة قاعدة شهرية · Add monthly rule")
         }
         Button(onClick = { vm.generateDueDrafts() }, modifier = Modifier.fillMaxWidth()) {
-            Text("إنشاء مسودات المستحق · Generate due drafts")
+            Text("التنفيذ التلقائي اليومي مفعّل · Automatic daily execution enabled")
         }
         Text("القواعد · Rules (${rules.size})")
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
