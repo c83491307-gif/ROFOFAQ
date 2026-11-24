@@ -9,11 +9,11 @@ import org.junit.Test
 
 class LocalBackupArchiveTest {
     @Test fun roundTripsValidatedSqliteSnapshot() {
-        val database = fakeSqliteDatabase(version = 7)
+        val database = fakeSqliteDatabase(version = 8)
         val result = LocalBackupArchive.decode(LocalBackupArchive.encode(database))
         assertTrue(result.toString(), result is LocalBackupArchive.DecodeResult.Valid)
         val snapshot = (result as LocalBackupArchive.DecodeResult.Valid).snapshot
-        assertEquals(7, snapshot.userVersion)
+        assertEquals(8, snapshot.userVersion)
         assertTrue(database.contentEquals(snapshot.databaseBytes))
     }
 
@@ -23,7 +23,7 @@ class LocalBackupArchiveTest {
     }
 
     @Test fun rejectsChecksumTampering() {
-        val archive = LocalBackupArchive.encode(fakeSqliteDatabase(7))
+        val archive = LocalBackupArchive.encode(fakeSqliteDatabase(8))
         val decoded = LocalBackupArchive.decode(archive)
         assertTrue(decoded is LocalBackupArchive.DecodeResult.Valid)
         // A damaged ZIP must never be accepted as a restorable snapshot.
