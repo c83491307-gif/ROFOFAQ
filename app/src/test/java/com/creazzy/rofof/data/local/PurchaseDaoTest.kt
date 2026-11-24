@@ -84,6 +84,45 @@ class PurchaseDaoTest {
         assertTrue(runCatching { purchases.recordAllocationAsPersonalExpense(allocation.id, accountId, categoryId) }.isFailure)
     }
 
+    @Test fun payerSplitCreatesOnlyOwnExpenseAndLinkedDebtForUnpaidShares() = runBlocking {
+        val transactions = RoomTransactionRepository(database.transactionDao(), database.accountDao(), database.categoryDao())
+        transactions.ensureDefaults()
+        val finance = com.creazzy.rofof.data.repository.RoomFinanceRepository(database)
+        val accountId = finance.createAccount("Wallet", "EGP", 2, 20_000L)
+        val categoryId = finance.createCategory("Shared dinner", "EXPENSE")
+        val session = purchases.createSession("Dinner", "EGP", 2)
+        val payer = purchases.addParticipant(session, "Me")
+        val friend = purchases.addParticipant(session, "Ahmed")
+        val item = purchases.addItem(session, "Dinner bill", 1_000L, 10_000L)
+        purchases.allocateItem(item, mapOf(payer to 6_000L, friend to 4_000L))
+        purchases.recordPayment(session, friend, 1_000L, "CASH", "friend-partial-payment")
+
+        val created = purchases.recordPayerSplitAsPersonalExpense(session, payer, accountId, categoryId)
+
+        assertEquals(1, created.size)
+        val personal = database.transactionDao().observeRecent().first()
+        assertEquals(1, personal.size)
+        assertEquals(6_000L, personal.single().amountMinor)
+        assertEquals("EXPENSE", personal.single().transactionType)
+
+        val debt = database.debtDao().observeBalances().first().single()
+        assertEquals("OWED_TO_ME", debt.direction)
+        assertEquals(3_000L, debt.principalMinor)
+        assertTrue(debt.title.contains("Ahmed"))
+        assertEquals(debt.id, database.purchaseDao().findDebtLink(
+            database.purchaseDao().allocationsForItem(item).single { it.participantId == friend }.id
+        )?.debtId)
+
+        val settlement = database.purchaseDao().settlementSnapshot(session).associateBy { it.participantId }
+        assertEquals(0L, settlement[payer]?.balanceMinor)
+        assertEquals(0L, settlement[friend]?.balanceMinor)
+        purchases.closeAsSettled(session)
+        assertTrue(database.purchaseDao().findSession(session)?.status == RoomPurchaseRepository.SETTLED)
+        assertTrue(runCatching {
+            purchases.recordPayerSplitAsPersonalExpense(session, payer, accountId, categoryId)
+        }.isFailure)
+    }
+
     @Test fun participantCanBeRenamedAndArchivedOnlyBeforeFinancialActivity() = runBlocking {
         val session = purchases.createSession("Family", "EGP", 2)
         val editable = purchases.addParticipant(session, "Old name")
