@@ -67,7 +67,16 @@ interface TransactionDao {
     @Update
     suspend fun update(transaction: TransactionEntity): Int
 
-    @Query("UPDATE transactions SET isDeleted = 1, deletedAtEpochMillis = :deletedAt WHERE id = :id AND isDeleted = 0")
+    @Query("""
+        UPDATE transactions SET isDeleted = 1, deletedAtEpochMillis = :deletedAt
+        WHERE id = :id AND isDeleted = 0
+          AND NOT EXISTS (
+              SELECT 1 FROM allocation_personal_expense_links links
+              WHERE links.transactionId = transactions.id
+          )
+          AND COALESCE(notes, '') NOT LIKE 'Debt settlement · %'
+          AND COALESCE(notes, '') NOT LIKE 'Goal contribution · %'
+    """)
     suspend fun moveToTrash(id: String, deletedAt: Long): Int
 
     @Query("UPDATE transactions SET isDeleted = 0, deletedAtEpochMillis = NULL WHERE id = :id AND isDeleted = 1 AND deletedAtEpochMillis >= :restoreAfter")
@@ -76,10 +85,28 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE isDeleted = 1 ORDER BY deletedAtEpochMillis DESC")
     fun observeTrash(): Flow<List<TransactionEntity>>
 
-    @Query("DELETE FROM transactions WHERE isDeleted = 1 AND deletedAtEpochMillis < :cutoff")
+    @Query("""
+        DELETE FROM transactions
+        WHERE isDeleted = 1 AND deletedAtEpochMillis < :cutoff
+          AND NOT EXISTS (
+              SELECT 1 FROM allocation_personal_expense_links links
+              WHERE links.transactionId = transactions.id
+          )
+          AND COALESCE(notes, '') NOT LIKE 'Debt settlement · %'
+          AND COALESCE(notes, '') NOT LIKE 'Goal contribution · %'
+    """)
     suspend fun purgeExpiredTrash(cutoff: Long): Int
 
-    @Query("DELETE FROM transactions WHERE id = :id AND isDeleted = 1")
+    @Query("""
+        DELETE FROM transactions
+        WHERE id = :id AND isDeleted = 1
+          AND NOT EXISTS (
+              SELECT 1 FROM allocation_personal_expense_links links
+              WHERE links.transactionId = transactions.id
+          )
+          AND COALESCE(notes, '') NOT LIKE 'Debt settlement · %'
+          AND COALESCE(notes, '') NOT LIKE 'Goal contribution · %'
+    """)
     suspend fun deletePermanently(id: String): Int
 
     @Query("""
