@@ -35,6 +35,26 @@ interface DebtDao {
     @Query("UPDATE debts SET status = :status, updatedAtEpochMillis = :updatedAt WHERE id = :id")
     suspend fun updateStatus(id: String, status: String, updatedAt: Long): Int
 
-    @Query("SELECT COUNT(*) FROM debt_repayments WHERE debtId = :debtId")
-    suspend fun countRepayments(debtId: String): Int
+    @Query("""
+        SELECT debts.*,
+            COALESCE((SELECT SUM(amountMinor) FROM debt_repayments WHERE debtId = debts.id), 0) AS repaidMinor,
+            debts.principalMinor - COALESCE((SELECT SUM(amountMinor) FROM debt_repayments WHERE debtId = debts.id), 0) AS outstandingMinor
+        FROM debts WHERE debts.id = :id LIMIT 1
+    """)
+    suspend fun getBalance(id: String): DebtBalance?
+
+    @Transaction
+    suspend fun recordRepayment(repayment: DebtRepaymentEntity): DebtBalance {
+        require(repayment.amountMinor > 0L) { "Repayment must be positive" }
+        val debt = requireNotNull(findById(repayment.debtId)) { "Debt not found" }
+        require(debt.status == "OPEN") { "Debt is not open" }
+        val repaid = sumRepayments(debt.id)
+        val outstanding = Math.subtractExact(debt.principalMinor, repaid)
+        require(outstanding > 0L) { "Debt is already settled" }
+        require(repayment.amountMinor <= outstanding) { "Repayment exceeds outstanding balance" }
+        insertRepayment(repayment)
+        val newOutstanding = Math.subtractExact(outstanding, repayment.amountMinor)
+        if (newOutstanding == 0L) updateStatus(debt.id, "CLOSED", repayment.createdAtEpochMillis)
+        return requireNotNull(getBalance(debt.id))
+    }
 }
