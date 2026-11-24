@@ -1,6 +1,10 @@
 package com.creazzy.rofof.feature.dashboard
 
 import android.app.Application
+import android.net.Uri
+import java.io.OutputStreamWriter
+import java.time.Instant
+import java.time.ZoneId
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.creazzy.rofof.data.local.CategoryEntity
@@ -230,6 +234,32 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                     updatedAtEpochMillis = System.currentTimeMillis()
                 )
             )
+        }
+    }
+
+    fun exportTransactions(uri: Uri) {
+        viewModelScope.launch {
+            _financeActionMessage.value = runCatching {
+                val rows = database.transactionDao().getAllForCsvExport()
+                val stream = getApplication<Application>().contentResolver.openOutputStream(uri, "wt")
+                    ?: error("Unable to open the selected export destination")
+                stream.use { output ->
+                    OutputStreamWriter(output, Charsets.UTF_8).use { writer ->
+                        writer.write("\uFEFF")
+                        writer.write("Date,Category,Amount,Currency,Note\r\n")
+                        rows.forEach { row ->
+                            val date = Instant.ofEpochMilli(row.occurredAtEpochMillis)
+                                .atZone(ZoneId.systemDefault()).toLocalDate().toString()
+                            val amount = BigDecimal.valueOf(row.amountMinor, row.currencyExponent).toPlainString()
+                            fun csv(value: String?): String = "\"" + (value ?: "").replace("\"", "\"\"") + "\""
+                            writer.write(listOf(date, csv(row.categoryName), amount, row.currencyCode, csv(row.note))
+                                .joinToString(","))
+                            writer.write("\r\n")
+                        }
+                    }
+                }
+                if (language.value == "ar") "تم تصدير المعاملات إلى CSV." else "Transactions exported to CSV."
+            }.getOrElse { localizeFinanceError(it.message.orEmpty()) }
         }
     }
 
