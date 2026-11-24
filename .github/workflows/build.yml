@@ -2,7 +2,8 @@ name: ROFOF Debug APK
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - feat/rofof-apk-integration
   workflow_dispatch:
     inputs:
       ref:
