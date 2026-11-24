@@ -33,7 +33,8 @@ class RecurringTransactionWorker(
             database.recurringDao().findDueRules(now).forEach { rule ->
                 val account = database.accountDao().findById(rule.accountId)
                 val category = database.categoryDao().findById(rule.categoryId)
-                if (account == null || account.isArchived ||
+                if (rule.intervalType != "MONTHLY" || rule.intervalCount <= 0 ||
+                    account == null || account.isArchived ||
                     category == null || category.isArchived ||
                     category.transactionType != rule.transactionType ||
                     account.currencyCode != rule.currencyCode ||
