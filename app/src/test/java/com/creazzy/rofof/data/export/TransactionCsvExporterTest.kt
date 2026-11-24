@@ -28,7 +28,7 @@ class TransactionCsvExporterTest {
 
     @Test fun neutralizesSpreadsheetFormulaPrefixesInTextFields() {
         val csv = TransactionCsvExporter.export(listOf(
-            TransactionEntity("id", "=HYPERLINK(\"https://example.invalid\")", "EXPENSE", 100L,
+        assertTrue(csv.contains("""\'=HYPERLINK(""https://example.invalid"")"""))
                 "EGP", 2, "cash", "food", 0L, 0L, "  @SUM(A1:A2)")
         ))
         assertTrue(csv.contains("\"'=HYPERLINK("))
