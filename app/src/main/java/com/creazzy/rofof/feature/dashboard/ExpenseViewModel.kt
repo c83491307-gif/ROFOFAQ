@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.creazzy.rofof.data.local.CategoryEntity
 import com.creazzy.rofof.data.local.LearnedKeyword
 import com.creazzy.rofof.feature.smartentry.SmartEntryParser
+import com.creazzy.rofof.widget.ExpenseWidgetUpdater
 import com.creazzy.rofof.data.repository.RoomFinanceRepository
 import com.creazzy.rofof.data.local.LocalPreferenceEntity
 import com.creazzy.rofof.data.local.RofofDatabase
@@ -13,6 +14,7 @@ import com.creazzy.rofof.data.repository.RoomTransactionRepository
 import com.creazzy.rofof.domain.model.LedgerTransaction
 import com.creazzy.rofof.feature.budgetgoals.BudgetOverrunNotifier
 import com.creazzy.rofof.feature.awareness.AwarenessAdvisor
+import com.creazzy.rofof.feature.awareness.BudgetRuleNotificationDispatcher
 import com.creazzy.rofof.feature.awareness.AwarenessEntryReview
 import com.creazzy.rofof.feature.awareness.DatabaseSeeder
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +41,7 @@ data class SafeToSpendState(
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
     private val database = RofofDatabase.getInstance(application)
     private val financeRepository = RoomFinanceRepository(database)
-    private val budgetOverrunNotifier = BudgetOverrunNotifier(application, database.budgetGoalDao())
+    private val budgetRuleNotifications = BudgetRuleNotificationDispatcher(application, database)
     private val awarenessAdvisor = AwarenessAdvisor(application, database)
     private val _awarenessReview = MutableStateFlow<AwarenessEntryReview?>(null)
     val awarenessReview = _awarenessReview.asStateFlow()
@@ -275,11 +277,14 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             }
 
             if (type == "EXPENSE") {
-                budgetOverrunNotifier.refreshForExpense(
-                    categoryId, account.currencyCode, account.currencyExponent,
-                    occurredAtEpochMillis, language.value
-                )
+                runCatching {
+                    budgetRuleNotifications.dispatchForExpense(
+                        categoryId, account.currencyCode, account.currencyExponent,
+                        occurredAtEpochMillis, language.value
+                    )
+                }
             }
+            ExpenseWidgetUpdater.refresh(getApplication())
         }
     }
 
@@ -335,17 +340,22 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 _financeActionMessage.value = localizeFinanceError(it.message.orEmpty())
             }.onSuccess {
                 if (original.transactionType == "EXPENSE") {
-                    budgetOverrunNotifier.refreshForExpense(
-                        original.categoryId, original.currencyCode, original.currencyExponent,
-                        original.occurredAtEpochMillis, language.value
-                    )
+                    runCatching {
+                        budgetRuleNotifications.dispatchForExpense(
+                            original.categoryId, original.currencyCode, original.currencyExponent,
+                            original.occurredAtEpochMillis, language.value
+                        )
+                    }
                 }
                 if (type == "EXPENSE") {
-                    budgetOverrunNotifier.refreshForExpense(
-                        categoryId, account.currencyCode, account.currencyExponent,
-                        occurredAtEpochMillis, language.value
-                    )
+                    runCatching {
+                        budgetRuleNotifications.dispatchForExpense(
+                            categoryId, account.currencyCode, account.currencyExponent,
+                            occurredAtEpochMillis, language.value
+                        )
+                    }
                 }
+                ExpenseWidgetUpdater.refresh(getApplication())
                 _financeActionMessage.value = if (language.value == "ar") "تم تحديث العملية المالية." else "Transaction updated."
             }
         }
@@ -356,11 +366,14 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             val previous = database.transactionDao().findById(id)
             repository.delete(id)
             if (previous?.transactionType == "EXPENSE") {
-                budgetOverrunNotifier.refreshForExpense(
-                    previous.categoryId, previous.currencyCode, previous.currencyExponent,
-                    previous.occurredAtEpochMillis, language.value
-                )
+                runCatching {
+                    budgetRuleNotifications.dispatchForExpense(
+                        previous.categoryId, previous.currencyCode, previous.currencyExponent,
+                        previous.occurredAtEpochMillis, language.value
+                    )
+                }
             }
+            ExpenseWidgetUpdater.refresh(getApplication())
         }
     }
 }
