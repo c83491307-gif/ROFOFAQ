@@ -53,6 +53,7 @@ import com.creazzy.rofof.feature.dashboard.DashboardScreen
 import com.creazzy.rofof.feature.dashboard.ExpenseViewModel
 import com.creazzy.rofof.feature.analytics.AnalyticsScreen
 import com.creazzy.rofof.feature.debts.DebtManagementScreen
+import com.creazzy.rofof.feature.importing.CsvImportScreen
 import com.creazzy.rofof.feature.purchases.PurchaseManagementScreen
 import com.creazzy.rofof.feature.recurring.RecurringManagementScreen
 import java.math.BigDecimal
@@ -194,6 +195,7 @@ fun ROFOFRootScreen(
                     onRecurring = { navController.navigate("recurring") },
                     onRequestNotifications = requestNotificationPermission,
                     onExportCsv = requestCsvExport,
+                    onImportCsv = { navController.navigate("csv-import") },
                     onTrash = { navController.navigate("trash") },
                     onDebts = { navController.navigate("debts") },
                     onAnalytics = { navController.navigate("analytics") },
@@ -215,6 +217,9 @@ fun ROFOFRootScreen(
             }
             composable("analytics") {
                 AnalyticsScreen(onBack = { navController.popBackStack() }, language = language)
+            }
+            composable("csv-import") {
+                CsvImportScreen(language = language, onBack = { navController.popBackStack() })
             }
         }
     }
@@ -277,6 +282,7 @@ private fun SettingsRoute(
     onRecurring: () -> Unit,
     onRequestNotifications: () -> Unit,
     onExportCsv: () -> Unit,
+    onImportCsv: () -> Unit,
     onTrash: () -> Unit,
     onDebts: () -> Unit,
     onAnalytics: () -> Unit,
@@ -298,6 +304,9 @@ private fun SettingsRoute(
         }
         TextButton(onClick = onExportCsv) {
             Text(if (ar) "تصدير المعاملات إلى Excel / CSV" else "Export transactions to Excel / CSV")
+        }
+        TextButton(onClick = onImportCsv) {
+            Text(if (ar) "استيراد معاملات CSV مع المعاينة" else "Import CSV with preview")
         }
         TextButton(onClick = onTrash) {
             Text(if (ar) "سلة المحذوفات · 30 يوماً" else "Recycle bin · 30 days")
