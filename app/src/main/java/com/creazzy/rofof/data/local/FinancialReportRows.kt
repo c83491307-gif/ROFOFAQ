@@ -15,3 +15,12 @@ data class MonthlyCashFlow(
     val incomeMinor: Long,
     val expenseMinor: Long
 )
+
+data class TransactionCsvRow(
+    val occurredAtEpochMillis: Long,
+    val categoryName: String,
+    val amountMinor: Long,
+    val currencyCode: String,
+    val currencyExponent: Int,
+    val note: String?
+)
