@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.creazzy.rofof.feature.awareness.BudgetNotificationWorker
@@ -67,6 +68,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun scheduleBudgetNotifications() {
+        WorkManager.getInstance(applicationContext).enqueue(
+            OneTimeWorkRequestBuilder<BudgetNotificationWorker>().build()
+        )
         val request = PeriodicWorkRequestBuilder<BudgetNotificationWorker>(6, TimeUnit.HOURS).build()
         WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
             BUDGET_NOTIFICATION_WORK,
