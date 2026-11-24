@@ -45,6 +45,25 @@ class TransactionDaoTest {
         assertEquals(null, dao.findById("expired"))
     }
 
+    @Test fun weekdayExpenseAggregateUsesLocalWeekdayAndIgnoresTrash() = runBlocking {
+        val dao = database.transactionDao()
+        val zone = java.time.ZoneId.systemDefault()
+        fun epoch(date: String) = java.time.LocalDate.parse(date)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
+        dao.insert(TransactionEntity("mon-a", "Monday A", "EXPENSE", 1_000L, "EGP", 2, "cash", "food", epoch("2026-11-23"), epoch("2026-11-23"), null))
+        dao.insert(TransactionEntity("mon-b", "Monday B", "EXPENSE", 2_000L, "EGP", 2, "cash", "food", epoch("2026-11-16"), epoch("2026-11-16"), null))
+        dao.insert(TransactionEntity("tue-a", "Tuesday", "EXPENSE", 500L, "EGP", 2, "cash", "food", epoch("2026-11-24"), epoch("2026-11-24"), null))
+        dao.insert(TransactionEntity("mon-trash", "Deleted Monday", "EXPENSE", 9_000L, "EGP", 2, "cash", "food", epoch("2026-11-09"), epoch("2026-11-09"), null, isDeleted = true))
+
+        val rows = dao.observeMonthlyExpenseByWeekday(
+            "EGP", 2, epoch("2026-11-01"), epoch("2026-12-01")
+        ).first()
+        val monday = rows.single { it.dayOfWeek == 1 }
+        assertEquals(3_000L, monday.totalExpenseMinor)
+        assertEquals(2, monday.occurrenceDays)
+        assertEquals(500L, rows.single { it.dayOfWeek == 2 }.totalExpenseMinor)
+    }
+
     @Test fun incomeAndExpenseArePersistedInChronologicalOrder() = runBlocking {
         val dao = database.transactionDao()
         dao.insert(TransactionEntity("expense", "Groceries", "EXPENSE", 12500, "EGP", 2, "cash", "food", 100L, 100L, null))
