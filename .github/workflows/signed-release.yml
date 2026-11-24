@@ -1,0 +1,126 @@
+name: ROFOF Signed Release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_label:
+        description: Optional label for this release artifact
+        required: false
+        default: "release"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rofof-signed-release
+  cancel-in-progress: false
+
+jobs:
+  signed-release:
+    name: Build and verify signed Release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_HOME: ${{ runner.temp }}/android-sdk
+    steps:
+      - name: Checkout main source
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Validate signing secrets and materialize keystore
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.ROFOF_RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ROFOF_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ROFOF_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ROFOF_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_B64" || { echo "::error::Missing ROFOF_RELEASE_KEYSTORE_BASE64"; exit 1; }
+          test -n "$STORE_PASSWORD" || { echo "::error::Missing ROFOF_RELEASE_STORE_PASSWORD"; exit 1; }
+          test -n "$KEY_ALIAS" || { echo "::error::Missing ROFOF_RELEASE_KEY_ALIAS"; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo "::error::Missing ROFOF_RELEASE_KEY_PASSWORD"; exit 1; }
+          install -d -m 700 "$RUNNER_TEMP/rofof-signing"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/rofof-signing/release.jks"
+          chmod 600 "$RUNNER_TEMP/rofof-signing/release.jks"
+          test -s "$RUNNER_TEMP/rofof-signing/release.jks"
+          keytool -list -keystore "$RUNNER_TEMP/rofof-signing/release.jks" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+          echo "ROFOF signing material is present and the configured alias exists."
+
+      - name: Run unit tests, lint and build signed Release APK
+        shell: bash
+        env:
+          STORE_PASSWORD: ${{ secrets.ROFOF_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ROFOF_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ROFOF_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --stacktrace \
+            testDebugUnitTest lintDebug \
+            assembleRelease \
+            -Pandroid.injected.signing.store.file="$RUNNER_TEMP/rofof-signing/release.jks" \
+            -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+
+      - name: Verify APK structure, alignment and cryptographic signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          "$BUILD_TOOLS/zipalign" -c -v 4 "$APK"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
+          unzip -t "$APK"
+          sha256sum "$APK" | tee "$RUNNER_TEMP/rofof-release-sha256.txt"
+          stat --printf='APK size: %s bytes\n' "$APK"
+          echo "Release APK passed ZIP integrity, 4-byte alignment and apksigner verification."
+
+      - name: Stage release deliverables
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-output
+          cp app/build/outputs/apk/release/app-release.apk "release-output/ROFOF-${{ inputs.version_label }}-release.apk"
+          cp "$RUNNER_TEMP/rofof-release-sha256.txt" release-output/SHA256SUMS.txt
+          {
+            echo "Artifact: ROFOF signed Release APK"
+            echo "Source ref: main"
+            echo "Source commit: $GITHUB_SHA"
+            echo "Package: com.creazzy.rofof"
+            echo "Verification: zipalign + apksigner + unzip integrity"
+            echo "Emulator: not run"
+          } > release-output/BUILD-VERIFICATION.txt
+
+      - name: Upload signed Release APK and verification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ROFOF-Signed-Release-${{ inputs.version_label }}
+          path: release-output/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Remove signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "$RUNNER_TEMP/rofof-signing"
