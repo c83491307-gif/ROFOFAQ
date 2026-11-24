@@ -2,9 +2,12 @@
 
 **ROFOF** is an offline-first Android application for daily spending, shared purchases, and personal finance management. Arabic is a first-class language, with English and RTL/LTR support.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Status](https://img.shields.io/badge/status-in%20development-yellow)]()
+
 ## Product direction
 
-The original project roadmap covers:
+The product roadmap retains the original goals for practical personal-finance management:
 - Daily income and expense transactions.
 - Multiple cash, card and savings accounts.
 - Categories and subcategories, transfers, recurring templates, splits, receipt attachments and tags.
@@ -15,11 +18,11 @@ The original project roadmap covers:
 - Arabic-first UX, English, light/dark themes, and a future responsive web/PWA client.
 - Optional receipt OCR and AI-assisted insights.
 
-See [the full README requirements mapping](docs/discovery/README_REQUIREMENTS_APPLIED_PLAN.md) for the status of each feature.
+The roadmap is a product direction, not a claim that every item is implemented. See [the requirements-to-delivery mapping](docs/discovery/README_REQUIREMENTS_APPLIED_PLAN.md) and the phase reports for scope and remaining work.
 
 ## Approved architecture
 
-The current delivery is **native Android first**, using Kotlin, Jetpack Compose and Room.
+The current delivery is **native Android first**, using Kotlin, Jetpack Compose and Room. This is the accepted architecture for the current product; the earlier backend/Flutter/PWA sketches are not the implementation plan for this Android delivery.
 
 - Room/SQLite is the source of truth for core device-local data.
 - Core workflows must work without an account, backend or network connection.
@@ -34,16 +37,18 @@ See [accepted architecture decisions](docs/architecture/DECISIONS.md).
 ## Android project
 
 - Module: `app`
-- Application ID: `com.creazzy.rofof`
+- Namespace / release application ID: `com.creazzy.rofof`
+- Debug application ID: `com.creazzy.rofof.debug`
 - Minimum Android: API 26
 - Compile/target SDK: API 35
 - JDK: 17
 - Gradle: 8.9
 - Android Gradle Plugin: 8.7.3
+- Kotlin: 2.0.21
 
 ## Build and verify
 
-The GitHub Actions workflow runs JVM tests, Android lint, debug APK assembly and Room instrumentation tests on an Android emulator.
+The repository provides GitHub Actions workflows for JVM/Robolectric tests, Android lint, debug APK assembly and Android emulator instrumentation. A focused workflow also builds and uploads the debug APK.
 
 With Android SDK, JDK 17 and Gradle 8.9 installed:
 
@@ -54,7 +59,11 @@ gradle assembleDebug
 gradle connectedDebugAndroidTest
 ```
 
+The repository currently does not include the Gradle Wrapper; CI installs Gradle 8.9 directly. See [APK build and branch integration](docs/implementation/APK_BUILD_AND_BRANCH_INTEGRATION.md). A configured workflow is not evidence of a passing run: verify the exact commit's Actions result before treating a build or test gate as passed.
+
 ## Current implementation status
+
+The checked items below describe functionality present in the integration-branch source. They are not a claim that the latest branch has passed CI or that the complete product roadmap is finished.
 
 - [x] Local-first Android foundation and Room database.
 - [x] Arabic/English dashboard and RTL/LTR switching.
@@ -66,15 +75,14 @@ gradle connectedDebugAndroidTest
 - [x] Account/category rename and safe archival UI with historical retention.
 - [x] Shared purchase sessions, participants, item-level exact allocations, actual payments, settlement balances and explicit personal-expense source links (see Phase 4 verification report).
 - [x] Monthly category budgets, manually maintained savings goals, and local budget-overrun notifications (Phases 5 and 10; see `docs/implementation/PHASE_10_BUDGET_OVERRUN_ALERTS.md`).
-- [x] Monthly recurring expense rules and reviewable draft generation (Phase 6; drafts are not auto-posted).
-- [x] Monthly category reports and transaction search.
+- [x] Monthly recurring expense rules and reviewable draft generation; approval and skip are explicit user actions, not automatic posting (Phases 6 and 9).
+- [x] Monthly category reports and case-insensitive transaction search (Phase 7; initial report scope is EGP-only).
+- [x] Safe local CSV export of non-deleted ledger transactions with UTF-8 BOM and spreadsheet formula-prefix neutralization (Phase 8).
 - [ ] Cash-flow and forecast UI.
-- [x] Safe local CSV export with UTF-8 BOM and formula-prefix neutralization.
 - [ ] CSV import, validated backup/restore and app security.
 - [ ] Optional OCR and future web/sync extensions.
 
-The checked items above describe delivered source functionality, not a claim that the latest branch has passed CI. See the implementation reports for exact verification evidence, including [Priority 2 shared purchases](docs/implementation/PHASE_4_SHARED_PURCHASES.md).
-
+See the implementation reports for exact feature boundaries: [Priority 2 shared purchases](docs/implementation/PHASE_4_SHARED_PURCHASES.md), [reports and search](docs/implementation/PHASE_7_REPORTS_AND_SEARCH.md), [CSV export](docs/implementation/PHASE_8_CSV_EXPORT.md), and [recurring draft approval](docs/implementation/PHASE_9_RECURRING_APPROVAL.md).
 
 ## Latest local enhancements
 
@@ -84,10 +92,9 @@ The checked items above describe delivered source functionality, not a claim tha
 
 See [new enhancements and V6.0 input implementation](docs/implementation/NEW_15_ENHANCEMENTS_AND_V6_INPUT.md) for implementation boundaries and verification status. These engines are foundations; the document lists persistence and product-integration gates that remain open.
 
-
 ## Build a debug APK with GitHub Actions
 
-The repository includes a cloud build workflow. Open **Actions → ROFOF Debug APK**, run it manually or push to `feat/rofof-apk-integration`, then download the `ROFOF-Debug-APK` artifact after a successful run. The build uses JDK 17, Android SDK 35 and Gradle 8.9 provided by GitHub Actions; it does not require Android Studio or a local Gradle installation. The broader Android CI workflow also runs unit/Robolectric tests, lint and emulator instrumentation. See [APK build and branch integration](docs/implementation/APK_BUILD_AND_BRANCH_INTEGRATION.md).
+Open **Actions → ROFOF Debug APK**, run the workflow manually or push to `feat/rofof-apk-integration`, then download the `ROFOF-Debug-APK` artifact only after a successful run. The build uses JDK 17, Android SDK 35 and Gradle 8.9 provided by GitHub Actions; it does not require Android Studio or a local Gradle installation. The broader Android CI workflow also runs unit/Robolectric tests, lint and emulator instrumentation. See [APK build and branch integration](docs/implementation/APK_BUILD_AND_BRANCH_INTEGRATION.md).
 
+A debug APK is not release-signed and is not a Play Store release. No release signing, publishing or deployment is configured here.
 
-Phase 7–9 implementation notes: [reports and search](docs/implementation/PHASE_7_REPORTS_AND_SEARCH.md), [CSV export](docs/implementation/PHASE_8_CSV_EXPORT.md), and [recurring draft approval](docs/implementation/PHASE_9_RECURRING_APPROVAL.md).
